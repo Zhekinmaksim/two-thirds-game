@@ -1,0 +1,14 @@
+{
+  "name": "two-thirds-keeper",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Auto-settle keeper for the TwoThirds game",
+  "scripts": { "start": "tsx keeper.js" },
+  "dependencies": {
+    "@inco/js": "1.0.0-rc-8",
+    "viem": "^2.39.3",
+    "dotenv": "^16.4.5",
+    "tsx": "^4.19.0"
+  }
+}

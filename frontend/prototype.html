@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TWO-THIRDS — confidential guessing cabinet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0705;
+    --bg2:#130d07;
+    --panel:#0f0a06;
+    --amber:#ffb000;
+    --amber-dim:#b3791a;
+    --amber-faint:#5e431c;
+    --cyan:#36f5ff;
+    --green:#45e645;
+    --red:#ff3b5c;
+    --ink:#33240f;
+    --line:#3a2a13;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);}
+  body{
+    font-family:'VT323','Courier New',monospace;
+    color:var(--amber);
+    font-size:21px;
+    line-height:1.1;
+    min-height:100vh;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #1a1107 0%, var(--bg) 60%, #050302 100%);
+    overflow-x:hidden;
+  }
+  /* CRT overlay */
+  .crt::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:90;
+    background:repeating-linear-gradient(to bottom,
+      rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.28) 3px, rgba(0,0,0,.28) 3px);
+    mix-blend-mode:multiply;
+  }
+  .crt::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:91;
+    background:radial-gradient(120% 100% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    @keyframes flicker{0%,100%{opacity:1}48%{opacity:.97}50%{opacity:.92}52%{opacity:.99}}
+    .screen{animation:flicker 6s infinite steps(1)}
+  }
+  .screen{max-width:980px;margin:0 auto;padding:18px 16px 60px;}
+
+  h1,h2,h3,.px{font-family:'Press Start 2P',monospace;font-weight:400}
+  .glow{text-shadow:0 0 6px rgba(255,176,0,.55),0 0 18px rgba(255,176,0,.25)}
+  .glow-c{color:var(--cyan);text-shadow:0 0 6px rgba(54,245,255,.6),0 0 16px rgba(54,245,255,.3)}
+  .glow-g{color:var(--green);text-shadow:0 0 6px rgba(69,230,69,.6),0 0 16px rgba(69,230,69,.3)}
+  .glow-r{color:var(--red);text-shadow:0 0 8px rgba(255,59,92,.7),0 0 22px rgba(255,59,92,.35)}
+
+  /* marquee */
+  .marquee{
+    border:3px double var(--amber-dim);
+    background:linear-gradient(#140d06,#0c0804);
+    padding:16px 14px 14px;text-align:center;position:relative;
+  }
+  .marquee .title{font-size:30px;letter-spacing:2px;}
+  .marquee .frac{color:var(--red);}
+  .marquee .tag{font-size:18px;color:var(--amber-dim);margin-top:10px;letter-spacing:1px}
+  .badge{
+    position:absolute;top:8px;right:10px;font-family:'Press Start 2P',monospace;
+    font-size:8px;color:#0a0705;background:var(--amber);padding:5px 6px;letter-spacing:1px}
+  .coin{position:absolute;top:10px;left:10px;font-size:16px;color:var(--amber-dim)}
+
+  /* status bar */
+  .statusbar{
+    display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;
+    border:1px solid var(--line);background:var(--panel);padding:10px 12px;
+    align-items:center;justify-content:space-between;font-size:19px}
+  .stat b{font-family:'Press Start 2P',monospace;font-size:12px;display:block;color:var(--amber);margin-top:4px}
+  .stat span{color:var(--amber-dim);font-size:15px;letter-spacing:1px}
+  .stat .red{color:var(--red)}
+  .stat .cyan{color:var(--cyan)}
+
+  .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-top:14px}
+  @media (max-width:760px){.grid{grid-template-columns:1fr}}
+
+  .panel{border:1px solid var(--line);background:var(--panel);padding:14px}
+  .panel .hd{font-family:'Press Start 2P',monospace;font-size:11px;color:var(--amber-dim);
+    border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:12px;letter-spacing:1px}
+
+  /* board of sealed slots */
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px}
+  .slot{
+    aspect-ratio:3/4;border:1px solid var(--amber-faint);background:#0d0904;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    font-family:'Press Start 2P',monospace;font-size:13px;position:relative;color:var(--amber);
+    transition:transform .12s ease}
+  .slot .lk{font-size:18px;color:var(--amber-dim)}
+  .slot .sub{font-size:7px;color:var(--amber-faint);margin-top:5px}
+  .slot.you{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset}
+  .slot.you .lk{color:var(--cyan)}
+  .slot.win{border-color:var(--green);box-shadow:0 0 10px rgba(69,230,69,.35)}
+  .slot.win .lk{color:var(--green)}
+  @media (prefers-reduced-motion: no-preference){
+    @keyframes flip{0%{transform:rotateY(0)}50%{transform:rotateY(90deg)}100%{transform:rotateY(0)}}
+    .slot.reveal{animation:flip .34s ease}
+  }
+
+  /* control */
+  .readout{font-family:'Press Start 2P',monospace;font-size:42px;text-align:center;
+    padding:14px 0 6px;letter-spacing:2px}
+  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;
+    background:linear-gradient(90deg,var(--amber) 0%,var(--amber) var(--p,33%),#241a0c var(--p,33%));
+    outline:none;margin:14px 0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:24px;
+    background:var(--amber);border:2px solid #0a0705;cursor:pointer;box-shadow:0 0 8px rgba(255,176,0,.6)}
+  input[type=range]::-moz-range-thumb{width:16px;height:24px;background:var(--amber);border:2px solid #0a0705;cursor:pointer}
+  .chips{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin:6px 0 12px}
+  .chip{font-family:'VT323',monospace;font-size:18px;color:var(--amber-dim);
+    border:1px solid var(--line);background:#0d0904;padding:5px 11px;cursor:pointer}
+  .chip:hover,.chip:focus-visible{color:var(--amber);border-color:var(--amber-dim);outline:none}
+  .feeline{display:flex;justify-content:space-between;font-size:18px;color:var(--amber-dim);
+    border-top:1px dashed var(--line);padding-top:10px;margin-top:4px}
+
+  button.act{
+    width:100%;font-family:'Press Start 2P',monospace;font-size:13px;letter-spacing:1px;
+    color:#0a0705;background:var(--amber);border:none;padding:15px 10px;margin-top:12px;cursor:pointer;
+    border-bottom:4px solid #7a5210;transition:transform .05s,filter .1s}
+  button.act:hover{filter:brightness(1.08)}
+  button.act:active{transform:translateY(3px);border-bottom-width:1px}
+  button.act:disabled{filter:grayscale(.6) brightness(.6);cursor:not-allowed}
+  button.act.ghost{background:#0d0904;color:var(--amber);border:1px solid var(--amber-dim);border-bottom:4px solid var(--ink)}
+  button.act.red{background:var(--red);border-bottom-color:#7a1226;color:#0a0705}
+
+  /* reveal */
+  .reveal-wrap{margin-top:4px}
+  .target-big{font-family:'Press Start 2P',monospace;font-size:46px;text-align:center;margin:8px 0}
+  .hist{display:flex;align-items:flex-end;gap:2px;height:96px;border-bottom:1px solid var(--line);
+    padding-bottom:0;margin:14px 0 4px;position:relative}
+  .bar{flex:1;background:var(--amber-faint);min-height:2px}
+  .bar.tgt{background:var(--red);box-shadow:0 0 8px rgba(255,59,92,.5)}
+  .bar.you{background:var(--cyan)}
+  .axis{display:flex;justify-content:space-between;font-size:14px;color:var(--amber-dim);margin-top:2px}
+  .resultline{font-size:20px;margin:8px 0;border-top:1px dashed var(--line);padding-top:10px}
+  .resultline .k{color:var(--amber-dim)}
+  .verdict{font-family:'Press Start 2P',monospace;font-size:18px;text-align:center;padding:12px 0}
+
+  /* history */
+  .spark{display:flex;align-items:flex-end;gap:3px;height:54px;margin:6px 0 12px}
+  .spark i{flex:1;background:var(--amber-dim);min-height:2px;display:block}
+  .spark i.last{background:var(--red)}
+  table{width:100%;border-collapse:collapse;font-size:18px}
+  th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #1c1408}
+  th{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--amber-dim);letter-spacing:1px}
+  td.num{color:var(--amber);text-align:right;font-variant-numeric:tabular-nums}
+  td.win{color:var(--green)}
+  .empty{color:var(--amber-faint);font-size:18px;padding:8px 2px}
+
+  .ticker{margin-top:16px;border:1px solid var(--line);background:#0c0804;overflow:hidden;white-space:nowrap}
+  .ticker span{display:inline-block;padding:8px 0;color:var(--amber-dim);font-size:17px;letter-spacing:1px}
+  @media (prefers-reduced-motion: no-preference){
+    @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .ticker span{animation:scroll 26s linear infinite}
+  }
+  .foot{text-align:center;color:var(--amber-faint);font-size:15px;margin-top:18px;letter-spacing:1px}
+  .blink{animation:bl 1s steps(1) infinite}
+  @keyframes bl{50%{opacity:0}}
+  .hide{display:none!important}
+</style>
+</head>
+<body class="crt">
+<div class="screen">
+
+  <div class="marquee">
+    <span class="coin">●●● CREDIT 99</span>
+    <span class="badge">SEALED ▸ INCO</span>
+    <div class="title px glow">TWO<span class="frac">·</span>THIRDS</div>
+    <div class="tag">GUESS ⅔ OF THE AVERAGE · LOWEST DISTANCE TAKES THE POT</div>
+  </div>
+
+  <div class="statusbar">
+    <div class="stat"><span>ROUND</span><b id="s-round">#047</b></div>
+    <div class="stat"><span>POT</span><b id="s-pot" class="red">$0.00</b></div>
+    <div class="stat"><span>PLAYERS SEALED</span><b id="s-players">0</b></div>
+    <div class="stat"><span>ENTRY</span><b>$1.00</b></div>
+    <div class="stat"><span>CLOSES IN</span><b id="s-timer" class="cyan">00:30</b></div>
+  </div>
+
+  <div class="grid">
+    <!-- BOARD -->
+    <div class="panel">
+      <div class="hd" id="board-hd">▸ SEALED ENTRIES — VALUES HIDDEN UNTIL SETTLE</div>
+      <div class="board" id="board"></div>
+      <div id="reveal" class="reveal-wrap hide">
+        <div class="hd" style="margin-top:14px">▸ DECRYPTED FIELD</div>
+        <div class="hist" id="hist"></div>
+        <div class="axis"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+        <div class="target-big"><span class="glow" style="font-size:13px;color:var(--amber-dim)">⅔ × AVG = </span><br><span id="target" class="glow-r">--</span></div>
+        <div class="resultline"><span class="k">AVERAGE GUESS</span> · <span id="r-avg">--</span> &nbsp;|&nbsp; <span class="k">FIELD</span> · <span id="r-field">--</span></div>
+        <div class="verdict" id="verdict"></div>
+        <div class="resultline">
+          <span class="k">POT</span> <span id="r-pot">--</span> &nbsp;·&nbsp;
+          <span class="k">RAKE 5%</span> <span id="r-rake">--</span> &nbsp;·&nbsp;
+          <span class="k">PAY / WINNER</span> <span id="r-pay" class="glow-g">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROL -->
+    <div class="panel">
+      <div class="hd">▸ YOUR GUESS</div>
+      <div id="control">
+        <div class="readout glow-c" id="readout">33</div>
+        <input id="range" type="range" min="0" max="100" value="33" aria-label="Your guess 0 to 100" />
+        <div class="chips">
+          <button class="chip" data-v="0">0</button>
+          <button class="chip" data-v="22">22</button>
+          <button class="chip" data-v="33">33</button>
+          <button class="chip" data-v="50">50</button>
+        </div>
+        <div class="feeline"><span>ENTRY FEE</span><span class="glow">$1.00 USDC</span></div>
+        <div class="feeline"><span>YOU PAY ON SEAL</span><span class="glow">$1.00</span></div>
+        <button class="act" id="btn-seal">▸ INSERT GUESS &amp; SEAL</button>
+      </div>
+
+      <div id="waiting" class="hide" style="text-align:center;padding:10px 0">
+        <div class="px glow-c" style="font-size:12px;line-height:1.5">YOUR GUESS<br>SEALED</div>
+        <div style="font-size:46px;letter-spacing:6px;color:var(--cyan)" class="glow-c">•••</div>
+        <div style="color:var(--amber-dim);font-size:17px">nobody can read it until the round closes</div>
+        <button class="act red" id="btn-settle">▸ SETTLE NOW</button>
+        <button class="act ghost" id="btn-settle2" style="margin-top:8px">force decrypt &amp; reveal</button>
+      </div>
+
+      <div id="after" class="hide" style="text-align:center;padding:6px 0">
+        <button class="act" id="btn-next">▸ NEXT ROUND</button>
+      </div>
+
+      <div class="hd" style="margin-top:18px">▸ HI-SCORES — RECENT TARGETS</div>
+      <div class="spark" id="spark"></div>
+      <table>
+        <thead><tr><th>RND</th><th>TGT</th><th>AVG</th><th>WINNER</th></tr></thead>
+        <tbody id="history"><tr><td colspan="4" class="empty">no rounds settled yet — play one ▸</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ticker"><span id="tick">CONFIDENTIAL GUESSING CABINET · GUESSES ENCRYPTED ON-CHAIN · NO PEEKING · ⅔ OF THE AVERAGE WINS · TIES SPLIT THE POT · &nbsp;&nbsp; CONFIDENTIAL GUESSING CABINET · GUESSES ENCRYPTED ON-CHAIN · NO PEEKING · ⅔ OF THE AVERAGE WINS · TIES SPLIT THE POT · &nbsp;&nbsp;</span></div>
+
+  <div class="foot">PROTOTYPE · simulated field · <span class="blink">▮</span> press a chip or drag the slider, then INSERT GUESS</div>
+</div>
+
+<script>
+(function(){
+  var ENTRY=1.0, RAKE=0.05;
+  var round=47, state='betting', yourGuess=33, joined=0, pot=0, timeLeft=30, timer=null;
+  var history=[]; // {round,target,avg,winner,youWon}
+  var field=[];   // numbers
+  var $=function(id){return document.getElementById(id)};
+  var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function rnd(a,b){return a+Math.random()*(b-a)}
+  function norm(m,s){var u=Math.random(),v=Math.random();return m+s*Math.sqrt(-2*Math.log(u))*Math.cos(6.2831853*v)}
+  function clamp(x){return Math.max(0,Math.min(100,Math.round(x)))}
+  function addr(){var h='0123456789abcdef',s='0x';for(var i=0;i<4;i++)s+=h[(Math.random()*16)|0];s+='…';for(var j=0;j<4;j++)s+=h[(Math.random()*16)|0];return s}
+  function money(n){return '$'+n.toFixed(2)}
+
+  // a believable level-k field
+  function genGuess(){
+    var r=Math.random(), g;
+    if(r<0.28) g=norm(42,9);       // one step of thinking
+    else if(r<0.58) g=norm(24,7);  // two steps
+    else if(r<0.80) g=norm(11,6);  // deep / equilibrium chasers
+    else g=rnd(0,100);             // noise
+    return clamp(g);
+  }
+
+  function setRange(v){
+    yourGuess=v; $('range').value=v; $('readout').textContent=v;
+    $('range').style.setProperty('--p', v+'%');
+  }
+
+  function renderBoard(){
+    var b=$('board'); b.innerHTML='';
+    for(var i=0;i<joined;i++){
+      var d=document.createElement('div'); d.className='slot';
+      d.innerHTML='<span class="lk">⌧</span><span class="sub">SEALED</span>';
+      b.appendChild(d);
+    }
+    if(state==='sealed'||state==='betting-you'){
+      var y=document.createElement('div'); y.className='slot you';
+      y.innerHTML='<span class="lk">★</span><span class="sub">YOU</span>';
+      b.appendChild(y);
+    }
+  }
+
+  function refreshStatus(){
+    $('s-round').textContent='#0'+round;
+    $('s-pot').textContent=money(pot);
+    $('s-players').textContent=joined+(state==='sealed'?1:0);
+  }
+
+  function tick(){
+    if(state!=='betting'&&state!=='sealed') return;
+    timeLeft--;
+    if(timeLeft<=0){timeLeft=0; clearInterval(timer); if(state==='sealed') settle(); return;}
+    var mm=String((timeLeft/60)|0).padStart(2,'0'), ss=String(timeLeft%60).padStart(2,'0');
+    $('s-timer').textContent=mm+':'+ss;
+    // ambient: players trickle in, pot grows
+    if(Math.random()<0.5 && joined<17){joined++; pot+=ENTRY; renderBoard(); refreshStatus();}
+  }
+
+  function startRound(){
+    state='betting'; joined=Math.round(rnd(4,7)); pot=joined*ENTRY; timeLeft=30; field=[];
+    $('reveal').classList.add('hide'); $('control').classList.remove('hide');
+    $('waiting').classList.add('hide'); $('after').classList.add('hide');
+    $('board-hd').textContent='▸ SEALED ENTRIES — VALUES HIDDEN UNTIL SETTLE';
+    $('btn-seal').disabled=false;
+    setRange(yourGuess); renderBoard(); refreshStatus();
+    $('s-timer').textContent='00:30';
+    clearInterval(timer); timer=setInterval(tick,1000);
+  }
+
+  function seal(){
+    if(state!=='betting') return;
+    state='sealed'; pot+=ENTRY;
+    $('control').classList.add('hide'); $('waiting').classList.remove('hide');
+    renderBoard(); refreshStatus();
+  }
+
+  function settle(){
+    clearInterval(timer);
+    state='revealing';
+    $('waiting').classList.add('hide');
+    $('board-hd').textContent='▸ DECRYPTING ENTRIES…';
+    // build full field: every sealed slot + you
+    field=[]; for(var i=0;i<joined;i++) field.push(genGuess());
+    var youIdx=field.length; field.push(yourGuess);
+
+    var avg=field.reduce(function(a,b){return a+b},0)/field.length;
+    var target=Math.round((2/3)*avg);
+    var dmin=Infinity; field.forEach(function(g){var d=Math.abs(g-target); if(d<dmin)dmin=d;});
+    var winners=[]; field.forEach(function(g,i){ if(Math.abs(g-target)===dmin) winners.push(i); });
+    var youWon=winners.indexOf(youIdx)>=0;
+    var netPot=pot*(1-RAKE), rake=pot*RAKE, pay=netPot/winners.length;
+
+    // flip slots to reveal numbers
+    var slots=$('board').querySelectorAll('.slot');
+    function revealSlot(k){
+      if(k>=slots.length){ showReveal(field,avg,target,winners,youIdx,netPot,rake,pay,youWon); return; }
+      var s=slots[k], g=field[k];
+      var isYou=(k===youIdx), isWin=winners.indexOf(k)>=0;
+      s.className='slot'+(isYou?' you':'')+(isWin?' win':'')+(rm?'':' reveal');
+      s.innerHTML='<span class="lk" style="font-size:15px">'+g+'</span><span class="sub">'+(isYou?'YOU':(isWin?'WIN':'•'))+'</span>';
+      setTimeout(function(){revealSlot(k+1)}, rm?0:55);
+    }
+    revealSlot(0);
+  }
+
+  function showReveal(field,avg,target,winners,youIdx,netPot,rake,pay,youWon){
+    state='result';
+    $('board-hd').textContent='▸ FIELD DECRYPTED — ROUND SETTLED';
+    $('reveal').classList.remove('hide');
+    $('after').classList.remove('hide');
+
+    // histogram bins of 5
+    var bins=new Array(20).fill(0);
+    field.forEach(function(g){var bi=Math.min(19,(g/5)|0); bins[bi]++;});
+    var max=Math.max.apply(null,bins)||1;
+    var tgtBin=Math.min(19,(target/5)|0), youBin=Math.min(19,(field[youIdx]/5)|0);
+    var h=$('hist'); h.innerHTML='';
+    for(var i=0;i<20;i++){
+      var bar=document.createElement('div');
+      bar.className='bar'+(i===tgtBin?' tgt':(i===youBin?' you':''));
+      bar.style.height=(8+ (bins[i]/max)*88)+'%';
+      h.appendChild(bar);
+    }
+    $('target').textContent=target;
+    $('r-avg').textContent=avg.toFixed(1);
+    $('r-field').textContent=field.length+' players';
+    $('r-pot').textContent=money(netPot+rake);
+    $('r-rake').textContent=money(rake);
+    $('r-pay').textContent=money(pay);
+
+    var v=$('verdict');
+    if(youWon && winners.length>1) v.innerHTML='<span class="glow-g">★ YOU SPLIT THE POT — '+money(pay)+'</span>';
+    else if(youWon) v.innerHTML='<span class="glow-g">★ YOU WIN — '+money(pay)+'</span>';
+    else { var off=Math.abs(field[youIdx]-target); v.innerHTML='<span class="glow-r">YOU GUESSED '+field[youIdx]+' · OFF BY '+off+'</span>'; }
+
+    refreshStatus();
+    // log history
+    history.unshift({round:round,target:target,avg:avg.toFixed(1),winner:youWon?'YOU':addr(),youWon:youWon});
+    renderHistory();
+  }
+
+  function renderHistory(){
+    var sp=$('spark'); sp.innerHTML='';
+    var last12=history.slice(0,12).reverse();
+    last12.forEach(function(r,i){
+      var bar=document.createElement('i');
+      bar.style.height=(8+(r.target/100)*46)+'px';
+      if(i===last12.length-1) bar.className='last';
+      bar.title='R#'+r.round+' tgt '+r.target;
+      sp.appendChild(bar);
+    });
+    var tb=$('history');
+    if(!history.length){tb.innerHTML='<tr><td colspan="4" class="empty">no rounds settled yet — play one ▸</td></tr>';return;}
+    tb.innerHTML='';
+    history.slice(0,8).forEach(function(r){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td>#0'+r.round+'</td><td class="num">'+r.target+'</td><td class="num">'+r.avg+'</td>'+
+        '<td class="'+(r.youWon?'win':'')+'">'+r.winner+'</td>';
+      tb.appendChild(tr);
+    });
+  }
+
+  function nextRound(){ round++; startRound(); }
+
+  // wire up
+  $('range').addEventListener('input',function(e){setRange(parseInt(e.target.value,10))});
+  Array.prototype.forEach.call(document.querySelectorAll('.chip'),function(c){
+    c.addEventListener('click',function(){setRange(parseInt(c.getAttribute('data-v'),10))});
+  });
+  $('btn-seal').addEventListener('click',seal);
+  $('btn-settle').addEventListener('click',settle);
+  $('btn-settle2').addEventListener('click',settle);
+  $('btn-next').addEventListener('click',nextRound);
+
+  setRange(33);
+  startRound();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+.DS_Store
+
+frontend/app/node_modules
+frontend/app/dist
+frontend/app/.env
+frontend/app/.env.local
+
+keeper/node_modules
+keeper/.env
+
+contracts/node_modules
+contracts/lib
+contracts/out
+contracts/cache
+contracts/broadcast
+contracts/.env

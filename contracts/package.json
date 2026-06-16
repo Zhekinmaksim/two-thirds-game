@@ -1,0 +1,16 @@
+{
+  "name": "two-thirds-contracts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Confidential 2/3-of-the-average game on Inco Lightning",
+  "scripts": {
+    "deps": "forge install foundry-rs/forge-std --no-git && npm install --ignore-scripts",
+    "build": "forge build",
+    "test": "forge test -vvv"
+  },
+  "dependencies": {
+    "@inco/lightning": "latest",
+    "@openzeppelin/contracts": "^5.6.1",
+    "@openzeppelin/contracts-upgradeable": "^5.6.1"
+  }
+}

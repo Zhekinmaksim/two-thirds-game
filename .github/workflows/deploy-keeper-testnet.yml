@@ -1,0 +1,25 @@
+name: Deploy Keeper Testnet
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "keeper/**"
+      - ".github/workflows/deploy-keeper-testnet.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly testnet app
+        run: flyctl deploy -c keeper/fly.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

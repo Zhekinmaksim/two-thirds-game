@@ -1,0 +1,202 @@
+# TWO-THIRDS
+
+Confidential onchain game built on Inco Lightning.
+
+Players pay a fixed `$1` entry fee, submit an encrypted guess from `0..100`, and try to land closest to `2/3` of the average guess. Guesses stay hidden until the round closes. The keeper asks Inco for attested decryptions, the contract verifies them onchain, computes the target, and pays winners directly during settlement. There is no claim step.
+
+## Product Summary
+
+- Fixed entry fee: `$1 USDC`
+- Max players per round: `100`
+- Default round duration: `1 hour`
+- Minimum players to settle a live game: `2`
+- House rake: configurable, currently `5%`
+- Winner payout: sent automatically by the contract inside `settle()`
+
+## Architecture
+
+```text
+Player Browser              Keeper                     Contract
+--------------             ------------------         -----------------------------
+encrypt guess in browser -> polls closed rounds  ->  stores encrypted handles
+approve + enter()          attestedDecrypt()         verifies decrypt attestations
+watch live state/events    calls settle()            computes 2/3 target
+                                                     auto-pays winner(s)
+                                                     starts next round
+```
+
+## Repository Layout
+
+```text
+two-thirds-game/
+  contracts/               Foundry contract, tests, deploy scripts
+  keeper/                  Node-based settlement bot for Fly.io
+  frontend/
+    app/                   Production Vite application for Vercel
+    prototype.html         Older static prototype
+  assets/social/           Social graphics and avatar/banner exports
+  .github/workflows/       GitHub deployment workflows
+```
+
+## Current Testnet State
+
+- Frontend production URL: `https://two-thirds-game.vercel.app`
+- Keeper health URL: `https://two-thirds-keeper-testnet.fly.dev/healthz`
+- Testnet contract: `0xCCB8C01456876a6e72dc4C0AFE22F940731cC09F`
+- Network: `Base Sepolia`
+
+## Contract Behavior
+
+The contract already uses direct payouts.
+
+- `enter()` transfers the fixed entry fee into the contract.
+- `settle()` verifies every attested decrypted guess.
+- The target is computed as `floor(2 * sum(guesses) / (3 * playerCount))`.
+- The closest wallet or wallets win.
+- The contract transfers winner payouts immediately with `_safeTransfer(...)`.
+- Any remainder from integer division rolls into the next round.
+
+That means the user experience is:
+
+- no claim button
+- no withdraw step
+- payout lands automatically on the winner wallet after settlement
+
+## Local Development
+
+### Contracts
+
+```bash
+cd contracts
+forge install foundry-rs/forge-std --no-git
+npm install --ignore-scripts
+forge build
+forge test -vvv
+```
+
+### Keeper
+
+```bash
+cd keeper
+cp .env.example .env
+npm install
+npm start
+```
+
+Required keeper env:
+
+```bash
+RPC_URL=
+SETTLER_PRIVATE_KEY=
+GAME_ADDRESS=
+CHAIN_ID=
+INCO_PEPPER=baseSepoliaTestnet
+TICK_SECONDS=30
+PORT=8080
+```
+
+### Frontend
+
+```bash
+cd frontend/app
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+Required frontend env:
+
+```bash
+VITE_INCO_PEPPER=baseSepoliaTestnet
+VITE_CHAIN_ID=84532
+VITE_CHAIN_NAME=Base Sepolia
+VITE_RPC_URL=https://sepolia.base.org
+VITE_GAME_ADDRESS=0xCCB8C01456876a6e72dc4C0AFE22F940731cC09F
+VITE_TOKEN_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+```
+
+## GitHub Deployment Flow
+
+This repository is prepared for GitHub-triggered deployments.
+
+### Frontend to Vercel
+
+Workflow: `.github/workflows/deploy-frontend.yml`
+
+Trigger:
+
+- push to `main`
+- manual `workflow_dispatch`
+
+Required GitHub secret:
+
+- `VERCEL_TOKEN`
+
+The workflow:
+
+1. pulls production settings from Vercel
+2. builds with production env
+3. deploys the prebuilt artifact to production
+
+### Keeper Testnet to Fly.io
+
+Workflow: `.github/workflows/deploy-keeper-testnet.yml`
+
+Trigger:
+
+- push to `main` when keeper files change
+- manual `workflow_dispatch`
+
+Required GitHub secret:
+
+- `FLY_API_TOKEN`
+
+The workflow deploys `keeper/fly.toml`, which targets the testnet app.
+
+### Keeper Mainnet to Fly.io
+
+Workflow: `.github/workflows/deploy-keeper-mainnet.yml`
+
+Trigger:
+
+- manual `workflow_dispatch` only
+
+This keeps mainnet deployment explicit and separate from testnet pushes.
+
+## Manual Deployment Commands
+
+### Frontend
+
+```bash
+cd frontend/app
+vercel --prod
+```
+
+### Keeper Testnet
+
+```bash
+cd keeper
+fly deploy -c fly.toml
+```
+
+### Keeper Mainnet
+
+```bash
+cd keeper
+fly deploy -c fly.mainnet.toml
+```
+
+## Mainnet Checklist
+
+- Full round lifecycle verified on testnet
+- Contract reviewed before real-money usage
+- Separate deployer, treasury, and settler wallets
+- Separate Fly app and settler key for mainnet
+- Vercel production env updated to mainnet addresses
+- Keeper funded with gas
+
+## Notes
+
+- The frontend is public-read first: round, pot, timer, results, archive, leaderboard, and live feed work without wallet connection.
+- The favicon is aligned with the social avatar asset.
+- The recent leaderboard is derived from real settled rounds, not simulated data.

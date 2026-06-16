@@ -1,0 +1,19 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib", "node_modules"]
+solc = "0.8.29"          # Inco Lightning requires ^0.8.29
+via_ir = true            # settle() needs IR pipeline (avoids "stack too deep")
+optimizer = true
+optimizer_runs = 200
+
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "@inco/lightning/=node_modules/@inco/lightning/src/",
+    "@inco/shared/=node_modules/@inco/shared/src/",
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+    "@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/",
+]
+
+# Verified: src/TwoThirds.sol compiles clean against the real @inco/lightning
+# mainnet library + OpenZeppelin with this exact config (solc 0.8.29, via_ir).
