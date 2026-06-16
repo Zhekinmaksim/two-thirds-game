@@ -209,7 +209,18 @@ function renderReveal(result) {
 }
 
 function renderHistory(results) {
-  const spark = results.slice(0, 12).reverse().map((row, index, list) => {
+  const source = results.length
+    ? results
+    : [
+        { target: 18 },
+        { target: 24 },
+        { target: 37 },
+        { target: 31 },
+        { target: 42 },
+        { target: 50 },
+      ];
+
+  const spark = source.slice(0, 12).reverse().map((row, index, list) => {
     const height = 8 + (Number(row.target) / 100) * 42;
     const cls = index === list.length - 1 ? "last" : "";
     return `<i class="${cls}" style="height:${height.toFixed(0)}px"></i>`;
