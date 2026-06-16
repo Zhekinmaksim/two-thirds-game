@@ -122,22 +122,19 @@ This repository is prepared for GitHub-triggered deployments.
 
 ### Frontend to Vercel
 
-Workflow: `.github/workflows/deploy-frontend.yml`
+The Vercel project is connected directly to the GitHub repository.
 
 Trigger:
 
 - push to `main`
-- manual `workflow_dispatch`
 
-Required GitHub secret:
+Behavior:
 
-- `VERCEL_TOKEN`
+- Vercel detects the push from GitHub
+- the project builds from `frontend/app`
+- production is updated through Vercel's native Git integration
 
-The workflow:
-
-1. pulls production settings from Vercel
-2. builds with production env
-3. deploys the prebuilt artifact to production
+No GitHub secret is required for frontend deployment.
 
 ### Keeper Testnet to Fly.io
 
