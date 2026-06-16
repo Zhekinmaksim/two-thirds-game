@@ -12,6 +12,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: keeper
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,6 +23,6 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly mainnet app
-        run: flyctl deploy -c keeper/fly.mainnet.toml --remote-only
+        run: flyctl deploy -c fly.mainnet.toml --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
