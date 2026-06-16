@@ -38,12 +38,13 @@ two-thirds-game/
   .github/workflows/       GitHub deployment workflows
 ```
 
-## Current Testnet State
+## Current Mainnet State
 
 - Frontend production URL: `https://two-thirds-game.vercel.app`
-- Keeper health URL: `https://two-thirds-keeper-testnet.fly.dev/healthz`
-- Testnet contract: `0xCCB8C01456876a6e72dc4C0AFE22F940731cC09F`
-- Network: `Base Sepolia`
+- Mainnet contract: `0x8e2d24585e019585587b101765A3F2fC46524503`
+- Network: `Base`
+- Mainnet keeper Fly app: `two-thirds-keeper-mainnet`
+- Testnet keeper Fly app: `two-thirds-keeper-testnet`
 
 ## Contract Behavior
 
@@ -86,11 +87,11 @@ npm start
 Required keeper env:
 
 ```bash
-RPC_URL=
+RPC_URL=https://mainnet.base.org
 SETTLER_PRIVATE_KEY=
-GAME_ADDRESS=
-CHAIN_ID=
-INCO_PEPPER=baseSepoliaTestnet
+GAME_ADDRESS=0x8e2d24585e019585587b101765A3F2fC46524503
+CHAIN_ID=8453
+INCO_PEPPER=mainnet
 TICK_SECONDS=30
 PORT=8080
 ```
@@ -107,12 +108,12 @@ npm run dev
 Required frontend env:
 
 ```bash
-VITE_INCO_PEPPER=baseSepoliaTestnet
-VITE_CHAIN_ID=84532
-VITE_CHAIN_NAME=Base Sepolia
-VITE_RPC_URL=https://sepolia.base.org
-VITE_GAME_ADDRESS=0xCCB8C01456876a6e72dc4C0AFE22F940731cC09F
-VITE_TOKEN_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+VITE_INCO_PEPPER=mainnet
+VITE_CHAIN_ID=8453
+VITE_CHAIN_NAME=Base
+VITE_RPC_URL=https://mainnet.base.org
+VITE_GAME_ADDRESS=0x8e2d24585e019585587b101765A3F2fC46524503
+VITE_TOKEN_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 ```
 
 ## GitHub Deployment Flow
