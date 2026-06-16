@@ -12,6 +12,7 @@ contract TwoThirdsTest is Test {
 
     TwoThirds game;
     MockERC20 token;
+    MockInco inco;
 
     uint256 constant FEE = 1_000_000; // 1 USDC (6 decimals)
     uint16  constant RAKE_BPS = 500;  // 5%
@@ -23,6 +24,7 @@ contract TwoThirdsTest is Test {
         // stub the Inco executor
         MockInco mock = new MockInco();
         vm.etch(INCO, address(mock).code);
+        inco = MockInco(INCO);
 
         token = new MockERC20();
         game = new TwoThirds(IERC20(address(token)), FEE, RAKE_BPS, DURATION, treasury, settler);
@@ -155,5 +157,80 @@ contract TwoThirdsTest is Test {
         assertEq(game.roundId(), 2, "advanced");
         (, , uint256 pot2, ) = game.getRound(2);
         assertEq(pot2, 0, "empty pot carried");
+    }
+
+    function test_SettlerDecryption_OnlyAuthorizedAfterClose() public {
+        address player = address(0x44);
+        _enter(player, 42);
+
+        bytes32[] memory handles = game.guessHandles(1);
+        assertEq(handles.length, 1, "one handle");
+        assertFalse(inco.isAllowed(handles[0], settler), "settler must not decrypt open round");
+
+        _close();
+        game.authorizeSettlerDecryption(1);
+
+        assertTrue(inco.isAllowed(handles[0], settler), "settler may decrypt only after close");
+    }
+
+    function test_Settlement_QueuesWinnerCredit_WhenTransferFails() public {
+        address p1 = address(0x1);
+        address p2 = address(0x2);
+        address p3 = address(0x3);
+        address alt = address(0xB0B);
+
+        _enter(p1, 60);
+        _enter(p2, 30);
+        _enter(p3, 15);
+        _close();
+
+        token.setTransferBlocked(p2, true);
+
+        uint256[] memory values = new uint256[](3);
+        values[0] = 60; values[1] = 30; values[2] = 15;
+        game.settle(values, _sigs(3));
+
+        uint256 pot = 3 * FEE;
+        uint256 rake = (pot * RAKE_BPS) / 10_000;
+        uint256 net = pot - rake;
+
+        assertEq(token.balanceOf(p2), 0, "blocked winner not auto-paid");
+        assertEq(game.pendingPayouts(p2), net, "winner credited instead of freezing");
+        assertEq(game.roundId(), 2, "next round still starts");
+
+        token.setTransferBlocked(p2, false);
+        vm.prank(p2);
+        game.withdrawPayout(alt);
+
+        assertEq(token.balanceOf(alt), net, "winner may redirect payout");
+        assertEq(game.pendingPayouts(p2), 0, "credit cleared");
+    }
+
+    function test_Settlement_QueuesTreasuryCredit_WhenTransferFails() public {
+        address p1 = address(0x11);
+        address p2 = address(0x22);
+        address p3 = address(0x33);
+        address altTreasury = address(0xCAFE);
+
+        _enter(p1, 0);
+        _enter(p2, 0);
+        _enter(p3, 30);
+        _close();
+
+        token.setTransferBlocked(treasury, true);
+
+        uint256[] memory values = new uint256[](3);
+        values[0] = 0; values[1] = 0; values[2] = 30;
+        game.settle(values, _sigs(3));
+
+        uint256 rake = (3 * FEE * RAKE_BPS) / 10_000;
+        assertEq(game.pendingTreasury(), rake, "treasury credit queued");
+        assertEq(game.roundId(), 2, "round advances despite treasury failure");
+
+        token.setTransferBlocked(treasury, false);
+        game.withdrawTreasury(altTreasury);
+
+        assertEq(token.balanceOf(altTreasury), rake, "owner may recover treasury credit");
+        assertEq(game.pendingTreasury(), 0, "treasury credit cleared");
     }
 }

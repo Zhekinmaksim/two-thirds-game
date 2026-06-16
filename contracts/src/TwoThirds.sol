@@ -16,16 +16,18 @@ import {euint256, ebool, e} from "@inco/lightning/Lib.sol";
  *    not the contract owner — can read any guess. That is the whole point: on a
  *    transparent chain the last player could read everyone else and win for free.
  *  - When the round closes, the encrypted guesses are decrypted by Inco's network,
- *    which returns each value together with a signed attestation. Anyone may call
- *    settle() with those attested values; the contract verifies every signature on
- *    chain (e.verifyDecryption) so the settler CANNOT lie about the numbers.
+ *    after the contract explicitly opens decryption for the configured settler.
+ *    The network returns each value together with a signed attestation. Anyone may
+ *    call settle() with those attested values; the contract verifies every signature
+ *    on chain (e.verifyDecryption) so the settler CANNOT lie about the numbers.
  *  - target = floor( 2 * sum(guesses) / (3 * n) ). Closest guess wins the pot.
  *    Ties split the pot equally. The house takes a small rake.
  *
  * TRUST MODEL
- *  - Fairness does not depend on the owner or the settler: the winning number is
+ *  - Fairness does not depend on the settler learning guesses during an open round:
+ *    decrypt permission is granted only after closesAt. The winning number is
  *    derived from the players' own guesses, and every decrypted value is verified
- *    against an Inco attestation before it is used. Settlement is permissionless.
+ *    against an Inco attestation before it is used. Settlement remains permissionless.
  *  - The owner controls only economic parameters (fee, rake, schedule) and pause,
  *    and can never see guesses or pick the winner.
  *
@@ -60,6 +62,9 @@ contract TwoThirds {
     mapping(uint256 => Round) private rounds;
     mapping(uint256 => mapping(address => bool))     public entered;     // rid => player => joined?
     mapping(uint256 => mapping(address => euint256)) private guessOf;    // rid => player => encrypted guess
+    mapping(uint256 => bool) public decryptionAuthorized;
+    mapping(address => uint256) public pendingPayouts;
+    uint256 public pendingTreasury;
 
     // ---- reentrancy guard ----
     uint256 private _lock = 1;
@@ -72,6 +77,11 @@ contract TwoThirds {
     event RolledOver(uint256 indexed rid, uint256 carriedPot, uint256 players);
     event RoundStarted(uint256 indexed rid, uint64 closesAt, uint256 seedPot);
     event ParamsChanged(uint256 entryFee, uint16 rakeBps, uint64 roundDuration, address treasury);
+    event DecryptionAuthorized(uint256 indexed rid, address indexed settler);
+    event PayoutQueued(uint256 indexed rid, address indexed account, uint256 amount);
+    event TreasuryQueued(uint256 indexed rid, uint256 amount);
+    event PayoutWithdrawn(address indexed account, address indexed to, uint256 amount);
+    event TreasuryWithdrawn(address indexed to, uint256 amount);
 
     constructor(
         IERC20 _token,
@@ -115,7 +125,6 @@ contract TwoThirds {
         // verify + bind the encrypted guess to this player, store the handle
         euint256 g = e.newEuint256(ciphertext, msg.sender);
         g.allowThis();                  // this contract may reference the handle
-        g.allow(settler);               // keeper may decrypt this guess at settlement
         guessOf[roundId][msg.sender] = g;
 
         entered[roundId][msg.sender] = true;
@@ -195,10 +204,16 @@ contract TwoThirds {
         uint256 pay     = netPot / wCount;
         uint256 dust    = netPot - (pay * wCount);
 
-        if (rake > 0) _safeTransfer(token, treasury, rake);
+        if (rake > 0 && !_tryTransfer(token, treasury, rake)) {
+            pendingTreasury += rake;
+            emit TreasuryQueued(rid, rake);
+        }
         for (uint256 i; i < n; ++i) {
             uint256 d = guesses[i] > target ? guesses[i] - target : target - guesses[i];
-            if (d == dmin) _safeTransfer(token, r.players[i], pay);
+            if (d == dmin && !_tryTransfer(token, r.players[i], pay)) {
+                pendingPayouts[r.players[i]] += pay;
+                emit PayoutQueued(rid, r.players[i], pay);
+            }
         }
 
         emit Settled(rid, target, avgX1, netPot, pay, wCount);
@@ -231,6 +246,45 @@ contract TwoThirds {
         for (uint256 i; i < n; ++i) {
             out[i] = euint256.unwrap(guessOf[rid][r.players[i]]);
         }
+    }
+
+    /**
+     * Opens decryption for a closed round by granting the configured settler access
+     * to every stored guess handle. This can only happen after the round is closed.
+     */
+    function authorizeSettlerDecryption(uint256 rid) public {
+        Round storage r = rounds[rid];
+        require(block.timestamp >= r.closesAt, "round open");
+        require(!r.settled, "settled");
+        if (decryptionAuthorized[rid]) return;
+
+        uint256 n = r.players.length;
+        for (uint256 i; i < n; ++i) {
+            guessOf[rid][r.players[i]].allow(settler);
+        }
+
+        decryptionAuthorized[rid] = true;
+        emit DecryptionAuthorized(rid, settler);
+    }
+
+    function withdrawPayout(address to) external nonReentrant {
+        require(to != address(0), "zero addr");
+        uint256 amount = pendingPayouts[msg.sender];
+        require(amount > 0, "nothing owed");
+
+        pendingPayouts[msg.sender] = 0;
+        require(_tryTransfer(token, to, amount), "transfer failed");
+        emit PayoutWithdrawn(msg.sender, to, amount);
+    }
+
+    function withdrawTreasury(address to) external onlyOwner nonReentrant {
+        require(to != address(0), "zero addr");
+        uint256 amount = pendingTreasury;
+        require(amount > 0, "nothing owed");
+
+        pendingTreasury = 0;
+        require(_tryTransfer(token, to, amount), "transfer failed");
+        emit TreasuryWithdrawn(to, amount);
     }
 
     // ----------------------------------------------------------------- admin
@@ -273,6 +327,11 @@ contract TwoThirds {
     function _safeTransfer(IERC20 t, address to, uint256 amt) internal {
         (bool ok, bytes memory data) = address(t).call(abi.encodeWithSelector(t.transfer.selector, to, amt));
         require(ok && (data.length == 0 || abi.decode(data, (bool))), "transfer failed");
+    }
+
+    function _tryTransfer(IERC20 t, address to, uint256 amt) internal returns (bool) {
+        (bool ok, bytes memory data) = address(t).call(abi.encodeWithSelector(t.transfer.selector, to, amt));
+        return ok && (data.length == 0 || abi.decode(data, (bool)));
     }
 
     function _safeTransferFrom(IERC20 t, address from, address to, uint256 amt) internal {

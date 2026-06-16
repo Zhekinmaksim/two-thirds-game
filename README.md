@@ -2,7 +2,7 @@
 
 Confidential onchain game built on Inco Lightning.
 
-Players pay a fixed `$1` entry fee, submit an encrypted guess from `0..100`, and try to land closest to `2/3` of the average guess. Guesses stay hidden until the round closes. The keeper asks Inco for attested decryptions, the contract verifies them onchain, computes the target, and pays winners directly during settlement. There is no claim step.
+Players pay a fixed `$1` entry fee, submit an encrypted guess from `0..100`, and try to land closest to `2/3` of the average guess. Guesses stay hidden until the round closes. After the round closes, the contract opens decryption for the configured settler, the keeper asks Inco for attested decryptions, and the contract verifies them onchain, computes the target, and attempts to pay winners directly during settlement. If a token transfer fails, the game still advances and the owed amount becomes withdrawable credit.
 
 ## Product Summary
 
@@ -19,9 +19,9 @@ Players pay a fixed `$1` entry fee, submit an encrypted guess from `0..100`, and
 Player Browser              Keeper                     Contract
 --------------             ------------------         -----------------------------
 encrypt guess in browser -> polls closed rounds  ->  stores encrypted handles
-approve + enter()          attestedDecrypt()         verifies decrypt attestations
-watch live state/events    calls settle()            computes 2/3 target
-                                                     auto-pays winner(s)
+approve + enter()          authorize decryption      verifies decrypt attestations
+watch live state/events    attestedDecrypt()         computes 2/3 target
+                           calls settle()            auto-pays winner(s) or credits fallback
                                                      starts next round
 ```
 
@@ -48,20 +48,22 @@ two-thirds-game/
 
 ## Contract Behavior
 
-The contract already uses direct payouts.
+The contract uses direct payouts first, with fallback credits if a transfer fails.
 
 - `enter()` transfers the fixed entry fee into the contract.
+- `authorizeSettlerDecryption()` can be called only after the round closes.
 - `settle()` verifies every attested decrypted guess.
 - The target is computed as `floor(2 * sum(guesses) / (3 * playerCount))`.
 - The closest wallet or wallets win.
-- The contract transfers winner payouts immediately with `_safeTransfer(...)`.
+- The contract attempts immediate winner payouts during `settle()`.
+- If a payout or treasury transfer fails, the owed amount is queued as claimable credit instead of freezing the round.
 - Any remainder from integer division rolls into the next round.
 
 That means the user experience is:
 
 - no claim button
-- no withdraw step
-- payout lands automatically on the winner wallet after settlement
+- payouts normally land automatically after settlement
+- a withdraw step appears only for fallback credits if the token transfer failed
 
 ## Local Development
 

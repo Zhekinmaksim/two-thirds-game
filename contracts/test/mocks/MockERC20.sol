@@ -9,9 +9,14 @@ contract MockERC20 {
 
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => bool) public transferBlocked;
 
     function mint(address to, uint256 amt) external {
         balanceOf[to] += amt;
+    }
+
+    function setTransferBlocked(address to, bool blocked) external {
+        transferBlocked[to] = blocked;
     }
 
     function approve(address spender, uint256 amt) external returns (bool) {
@@ -33,6 +38,7 @@ contract MockERC20 {
     }
 
     function _move(address from, address to, uint256 amt) internal {
+        require(!transferBlocked[to], "blocked");
         require(balanceOf[from] >= amt, "balance");
         balanceOf[from] -= amt;
         balanceOf[to] += amt;

@@ -8,7 +8,7 @@
 // Run:  cp .env.example .env && edit, then  `node keeper.js`
 //
 // The settler key here must match the SETTLER_ADDRESS the contract was deployed
-// with (enter() grants that address permission to decrypt guesses).
+// with. The contract opens decryption for that address only after the round closes.
 
 import "dotenv/config";
 import nodeHttp from "node:http";
@@ -51,6 +51,7 @@ const wallet = createWalletClient({ account, chain, transport });
 const ABI = parseAbi([
   "function roundId() view returns (uint256)",
   "function getRound(uint256 rid) view returns (uint64 closesAt, bool settled, uint256 pot, uint256 playerCount)",
+  "function authorizeSettlerDecryption(uint256 rid)",
   "function guessHandles(uint256 rid) view returns (bytes32[])",
   "function settle(uint256[] values, bytes[][] signatures)",
 ]);
@@ -102,6 +103,8 @@ async function tick() {
     let values = [];
     let signatures = [];
     if (Number(playerCount) > 0) {
+      const authTx = await game.write.authorizeSettlerDecryption([rid], { account });
+      await publicClient.waitForTransactionReceipt({ hash: authTx });
       const handles = await game.read.guessHandles([rid]);
       const inc = await getInco();
       const attestations = await inc.attestedDecrypt(wallet, handles);

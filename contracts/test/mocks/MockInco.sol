@@ -21,6 +21,7 @@ import {DecryptionAttestation} from "@inco/lightning/lightning-parts/DecryptionA
 contract MockInco {
     uint256 private nonce;
     mapping(bytes32 => uint256) public valueOf; // handle => plaintext (test-only)
+    mapping(bytes32 => mapping(address => bool)) public isAllowed;
 
     function getFee() external pure returns (uint256) {
         return 0;
@@ -35,7 +36,9 @@ contract MockInco {
         valueOf[handle] = abi.decode(ciphertext, (uint256));
     }
 
-    function allow(bytes32, address) external {}
+    function allow(bytes32 handle, address who) external {
+        isAllowed[handle][who] = true;
+    }
 
     function incoVerifier() external view returns (address) {
         return address(this);
