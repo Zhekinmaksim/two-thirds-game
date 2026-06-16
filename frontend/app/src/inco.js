@@ -80,6 +80,8 @@ async function hydrateSettledLog(log) {
     payPerWinner: log.args.payPerWinner,
     winners: Number(log.args.winners),
     winnerAddresses: [],
+    guesses: [],
+    txHash: log.transactionHash,
   };
 
   try {
@@ -97,6 +99,7 @@ async function hydrateSettledLog(log) {
     if (decoded.functionName === "settle") {
       const [values] = decoded.args;
       const guesses = values.map(clampGuess);
+      base.guesses = guesses;
       const target = Number(log.args.target);
       let minDistance = Number.POSITIVE_INFINITY;
 

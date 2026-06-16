@@ -1,625 +1,476 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TWO-THIRDS</title>
+<title>TWO·THIRDS</title>
 <link rel="icon" href="/favicon.png" type="image/png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0a0705;
-    --bg-deep:#050302;
-    --panel:#0f0a06;
-    --panel-2:#120c07;
-    --line:#30200d;
-    --line-strong:#5f4316;
-    --amber:#ffb000;
-    --amber-soft:#b3791a;
+  .tt-root{
+    --accent:#ffb000;
     --cyan:#36f5ff;
     --green:#45e645;
     --red:#ff3b5c;
-    --text:#f8c457;
-    --muted:#715227;
+    --base:#4cc3ff;
+    --bg:#0a0705;
+    --panel:#0f0a06;
+    --accent-dim:color-mix(in oklab,var(--accent),#050302 30%);
+    --accent-faint:color-mix(in oklab,var(--accent),#050302 48%);
+    --line:color-mix(in oklab,var(--accent),#050302 62%);
+    --cardborder:color-mix(in oklab,var(--accent),#050302 55%);
+    --foil1:color-mix(in oklab,var(--accent),#050302 70%);
+    --foil2:color-mix(in oklab,var(--accent),#050302 82%);
+    --foil-t:color-mix(in oklab,var(--accent),#050302 18%);
+    --foil-d:color-mix(in oklab,var(--accent),#050302 12%);
+    --accent-glow:color-mix(in oklab,var(--accent),transparent 50%);
   }
-  *{box-sizing:border-box}
-  html,body{min-height:100%}
-  body{
-    margin:0;
-    color:var(--text);
-    background:
-      radial-gradient(120% 90% at 50% 0%,#1a1107 0,var(--bg) 52%,var(--bg-deep) 100%);
-    font-family:'VT323',monospace;
-    font-size:24px;
-    line-height:1.1;
-  }
-  body::before{
-    content:"";
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    z-index:9;
-    background:
-      repeating-linear-gradient(to bottom,transparent 0 2px,rgba(0,0,0,.28) 3px 3px),
-      radial-gradient(120% 100% at 50% 50%,transparent 56%,rgba(0,0,0,.5) 100%);
-    mix-blend-mode:multiply;
-  }
-  .shell{
+  .tt-root, .tt-root *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{background:#0a0705}
+  .tt-root{
     position:relative;
-    z-index:1;
-    max-width:1480px;
+    max-width:1100px;
     margin:0 auto;
-    padding:34px 18px 44px;
+    padding:18px 16px 60px;
+    font-family:"VT323","Courier New",monospace;
+    color:var(--accent);
+    font-size:21px;
+    line-height:1.1;
+    background:radial-gradient(120% 85% at 50% 0%,#1a1107 0%,var(--bg) 60%,#050302 100%);
+    -webkit-font-smoothing:none;
   }
-  .eyebrow{
-    font-family:'Press Start 2P',monospace;
-    font-size:11px;
-    color:var(--amber-soft);
-    letter-spacing:3px;
-    margin-bottom:26px;
+  .tt-px{font-family:"Press Start 2P",monospace;font-weight:400}
+  .tt-root a{color:inherit;text-decoration:none}
+  .tt-root a:hover{filter:brightness(1.08)}
+
+  @keyframes tt-foilSheen{0%{background-position:-150% 0}100%{background-position:250% 0}}
+  @keyframes tt-blink{50%{opacity:0}}
+  @keyframes tt-live{0%,100%{opacity:1}50%{opacity:.35}}
+  @keyframes tt-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @keyframes tt-dots{0%,100%{opacity:.4}50%{opacity:1}}
+  @keyframes tt-cardPulse{0%,100%{box-shadow:0 0 0 rgba(0,0,0,0)}50%{box-shadow:0 0 10px rgba(255,176,0,.14)}}
+  @media (prefers-reduced-motion: reduce){ .tt-root *{animation:none !important} }
+
+  .tt-marquee{
+    border:3px double color-mix(in oklab,var(--accent),#050302 35%);
+    background:linear-gradient(#140d06,#0c0804);
+    padding:16px 14px 14px;
+    text-align:center;
+    position:relative;
+    border-radius:4px;
   }
-  .hero{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) 210px;
-    gap:18px;
-    align-items:end;
-    margin-bottom:18px;
-  }
-  .hero-title{
-    font-family:'Press Start 2P',monospace;
-    font-size:clamp(38px,6vw,92px);
-    line-height:.95;
-    color:var(--amber);
-    text-shadow:0 0 12px rgba(255,176,0,.3);
-    margin:0 0 22px;
-  }
-  .hero-title .dot{color:var(--red)}
-  .hero-sub{
-    font-size:clamp(28px,2.1vw,48px);
-    color:var(--amber-soft);
-    margin:0 0 14px;
-  }
-  .hero-meta{
-    display:flex;
-    flex-wrap:wrap;
-    gap:12px 20px;
-    color:var(--muted);
-    font-size:20px;
-    letter-spacing:1px;
-  }
-  .hero-bars{
-    display:flex;
-    align-items:flex-end;
-    justify-content:flex-end;
-    gap:7px;
-    padding-bottom:10px;
-  }
-  .hero-bars span{
-    width:20px;
-    background:linear-gradient(180deg,color-mix(in oklab,var(--amber),white 10%),color-mix(in oklab,var(--amber),#050302 36%));
-    box-shadow:0 0 10px rgba(255,176,0,.14);
-  }
-  .hero-bars span:nth-child(1){height:42px}
-  .hero-bars span:nth-child(2){height:66px}
-  .hero-bars span:nth-child(3){height:94px}
-  .hero-bars span:nth-child(4){height:112px;background:linear-gradient(180deg,#ff889d,var(--red))}
-  .hero-bars span:nth-child(5){height:74px}
-  .hero-bars span:nth-child(6){height:44px}
-  .statusbar{
-    display:grid;
-    grid-template-columns:repeat(6,minmax(0,1fr));
-    gap:10px;
-    margin-bottom:14px;
-  }
-  .stat{
-    border:1px solid var(--line);
-    background:linear-gradient(180deg,var(--panel-2),var(--panel));
-    padding:12px 14px;
-    min-height:82px;
-  }
-  .stat span{
-    display:block;
-    font-family:'Press Start 2P',monospace;
-    font-size:9px;
-    color:var(--amber-soft);
-    letter-spacing:1px;
-    margin-bottom:10px;
-  }
-  .stat b{
-    display:block;
-    font-family:'Press Start 2P',monospace;
-    font-size:14px;
-    color:var(--amber);
-  }
-  .stat b.cyan{color:var(--cyan);text-shadow:0 0 10px rgba(54,245,255,.22)}
-  .stat b.red{color:var(--red);text-shadow:0 0 10px rgba(255,59,92,.18)}
-  .main-grid{
-    display:grid;
-    grid-template-columns:minmax(0,1.5fr) 360px;
-    gap:14px;
-    align-items:start;
-  }
-  .panel{
-    border:1px solid var(--line);
-    background:linear-gradient(180deg,var(--panel-2),var(--panel));
-    padding:14px;
-  }
-  .panel-head{
-    display:flex;
-    justify-content:space-between;
-    gap:14px;
-    align-items:center;
-    border-bottom:1px solid var(--line);
-    padding-bottom:10px;
-    margin-bottom:12px;
-  }
-  .panel-title{
-    font-family:'Press Start 2P',monospace;
-    font-size:11px;
-    color:var(--amber-soft);
-    letter-spacing:1px;
-  }
-  .panel-note{
-    font-size:18px;
-    color:var(--muted);
-  }
-  .board-grid{
-    display:grid;
-    grid-template-columns:repeat(10,minmax(0,1fr));
-    gap:8px;
-  }
-  .seat{
-    aspect-ratio:0.82;
-    border:1px solid var(--line);
-    background:
-      linear-gradient(180deg,rgba(255,176,0,.04),rgba(255,176,0,.015)),
-      linear-gradient(180deg,#0d0805,#080503);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-family:'Press Start 2P',monospace;
-    font-size:10px;
-    color:transparent;
-    transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease;
-  }
-  .seat.filled{
-    color:#0a0705;
-    border-color:#8b5a0b;
-    background:linear-gradient(180deg,#ffd35c,#ffb000 55%,#8f5b08);
-    box-shadow:0 0 10px rgba(255,176,0,.12);
-  }
-  .seat.mine{
-    border-color:var(--cyan);
-    box-shadow:0 0 16px rgba(54,245,255,.22);
-  }
-  .seat.mine::after{
-    content:"YOU";
-    color:var(--cyan);
-    text-shadow:0 0 8px rgba(54,245,255,.28);
-  }
-  .side-rail{
+  .tt-coin{position:absolute;top:11px;left:13px;font-size:15px;color:var(--accent-dim)}
+  .tt-chip-stack{
+    position:absolute;
+    top:9px;
+    right:12px;
     display:flex;
     flex-direction:column;
-    gap:14px;
+    align-items:flex-end;
+    gap:5px;
   }
-  .wallet-status{
-    font-size:20px;
-    color:var(--muted);
+  .tt-chip-inco,
+  .tt-chip-base{
+    font-size:8px;
+    padding:5px 6px;
+    letter-spacing:1px;
+    border-radius:2px;
   }
-  .wallet-status.live{color:var(--cyan)}
-  button{
-    width:100%;
-    border:none;
-    cursor:pointer;
-    padding:13px 12px;
-    color:#0a0705;
-    background:var(--amber);
-    font-family:'Press Start 2P',monospace;
-    font-size:12px;
-    border-bottom:4px solid #7a5210;
+  .tt-chip-inco{color:#0a0705;background:var(--accent)}
+  .tt-chip-base{color:#06111a;background:var(--base);box-shadow:0 0 10px rgba(76,195,255,.18)}
+  .tt-title{
+    font-size:30px;
+    letter-spacing:2px;
+    color:var(--accent);
+    text-shadow:0 0 8px color-mix(in oklab,var(--accent),transparent 40%),0 0 22px color-mix(in oklab,var(--accent),transparent 62%);
   }
-  button:disabled{
-    filter:grayscale(.55) brightness(.68);
-    cursor:not-allowed;
-  }
-  button:active{
-    transform:translateY(3px);
-    border-bottom-width:1px;
-  }
-  .btn-alt{
-    background:var(--green);
-    border-bottom-color:#237923;
-  }
-  .guess-value{
-    font-family:'Press Start 2P',monospace;
-    font-size:64px;
-    line-height:1;
-    text-align:center;
-    color:var(--cyan);
-    text-shadow:0 0 12px rgba(54,245,255,.24);
-    margin:10px 0 14px;
-  }
-  input[type=range]{
-    width:100%;
-    -webkit-appearance:none;
-    height:8px;
-    background:linear-gradient(90deg,var(--amber) 0%,var(--amber) var(--p,33%),#23170b var(--p,33%),#23170b 100%);
-    outline:none;
-    margin:14px 0 12px;
-  }
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;
-    width:18px;
-    height:28px;
-    background:var(--amber);
-    border:2px solid #0a0705;
-  }
-  input[type=range]::-moz-range-thumb{
-    width:18px;
-    height:28px;
-    background:var(--amber);
-    border:2px solid #0a0705;
-  }
-  .chips{
+  .tt-title .frac{color:var(--red)}
+  .tt-tag{font-size:18px;color:var(--accent-dim);margin-top:10px;letter-spacing:1px}
+
+  .tt-status{
     display:flex;
     flex-wrap:wrap;
-    gap:8px;
-    margin:6px 0 10px;
-  }
-  .chip{
-    width:auto;
-    padding:7px 10px;
-    font-family:'VT323',monospace;
-    font-size:20px;
-    color:var(--amber-soft);
-    background:#100904;
-    border:1px solid var(--line);
-    border-bottom:1px solid var(--line);
-  }
-  .kv{
-    display:flex;
-    justify-content:space-between;
-    gap:16px;
-    padding-top:8px;
-    margin-top:8px;
-    border-top:1px dashed var(--line);
-    color:var(--muted);
-    font-size:21px;
-  }
-  .kv strong{
-    color:var(--amber);
-    font-weight:400;
-  }
-  .kv strong.green{color:var(--green)}
-  .kv strong.cyan{color:var(--cyan)}
-  .help-copy{
-    color:var(--muted);
-    font-size:20px;
-  }
-  .strip{
-    display:grid;
-    grid-template-columns:repeat(5,minmax(0,1fr));
     gap:10px;
-    margin-top:14px;
-  }
-  .strip-card{
-    border:1px solid var(--line);
-    background:#0c0804;
-    padding:12px 14px;
-    min-height:88px;
-  }
-  .strip-card span{
-    display:block;
-    font-family:'Press Start 2P',monospace;
-    font-size:9px;
-    color:var(--amber-soft);
-    margin-bottom:10px;
-  }
-  .strip-card b{
-    display:block;
-    font-family:'Press Start 2P',monospace;
-    font-size:12px;
-    color:var(--amber);
-  }
-  .strip-card b.green{color:var(--green)}
-  .strip-card b.red{color:var(--red)}
-  .results-grid{
-    display:grid;
-    grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);
-    gap:14px;
-    margin-top:14px;
-  }
-  .result-main{
-    display:grid;
-    grid-template-columns:170px minmax(0,1fr);
-    gap:16px;
-    align-items:start;
-  }
-  .target-block{
-    text-align:center;
-  }
-  .target-block small{
-    display:block;
-    font-size:18px;
-    color:var(--muted);
-    margin-bottom:10px;
-  }
-  .target-block b{
-    display:block;
-    font-family:'Press Start 2P',monospace;
-    font-size:58px;
-    line-height:1;
-    color:var(--red);
-    text-shadow:0 0 12px rgba(255,59,92,.22);
-  }
-  .verdict{
-    margin-top:14px;
-    font-family:'Press Start 2P',monospace;
-    font-size:12px;
-    color:var(--green);
-  }
-  .winner-copy{
-    font-size:20px;
-    color:var(--amber);
-    word-break:break-word;
     margin-top:10px;
-  }
-  .results-table, .leaderboard-table{
-    width:100%;
-    border-collapse:collapse;
-    font-size:19px;
-  }
-  .results-table th, .results-table td,
-  .leaderboard-table th, .leaderboard-table td{
-    padding:6px;
-    border-bottom:1px solid #1b1309;
-  }
-  .results-table th, .leaderboard-table th{
-    font-family:'Press Start 2P',monospace;
-    font-size:8px;
-    color:var(--amber-soft);
-    letter-spacing:1px;
-    text-align:left;
-  }
-  .results-table td.num, .leaderboard-table td.num{
-    text-align:right;
-    font-variant-numeric:tabular-nums;
-  }
-  .leaderboard-table td.place{
-    color:var(--amber-soft);
-    width:54px;
-  }
-  .leaderboard-table td.win{
-    color:var(--green);
-  }
-  .leaderboard-table td.addr{
-    max-width:0;
-  }
-  .ticker{
-    display:flex;
-    align-items:stretch;
-    overflow:hidden;
-    margin-top:16px;
     border:1px solid var(--line);
-    background:#0c0804;
+    background:var(--panel);
+    padding:10px 12px;
+    align-items:center;
+    justify-content:space-between;
+    border-radius:4px;
   }
-  .ticker-label{
-    flex:none;
+  .tt-stat span{font-size:14px;color:var(--accent-dim);letter-spacing:1px}
+  .tt-stat b{display:block;font-size:12px;margin-top:4px}
+
+  .tt-trust{
     display:flex;
     align-items:center;
-    gap:7px;
-    padding:0 10px;
-    background:var(--red);
-    color:#0a0705;
-    font-family:'Press Start 2P',monospace;
+    gap:12px;
+    margin-top:10px;
+    border:1px solid var(--line);
+    background:#0c0804;
+    padding:8px 12px;
+    border-radius:4px;
+    flex-wrap:wrap;
+  }
+  .tt-trust-badge{
     font-size:8px;
+    color:#0a0705;
+    background:var(--green);
+    padding:6px 8px;
+    border-radius:2px;
     letter-spacing:1px;
+    box-shadow:0 0 10px rgba(69,230,69,.45);
   }
-  .live-dot{
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#0a0705;
-    display:inline-block;
-    animation:pulse 1s steps(1,end) infinite;
+  .tt-trust-chain{
+    font-size:8px;
+    color:#06111a;
+    background:var(--base);
+    padding:6px 8px;
+    border-radius:2px;
+    letter-spacing:1px;
+    box-shadow:0 0 10px rgba(76,195,255,.25);
   }
-  .ticker-window{
-    flex:1;
-    overflow:hidden;
-    white-space:nowrap;
-  }
-  .ticker-track{
-    display:inline-flex;
-    gap:28px;
-    padding:10px 22px;
-    min-width:100%;
-    animation:ticker 28s linear infinite;
-  }
-  .ticker-item{
-    color:var(--amber-soft);
-    font-size:18px;
-  }
-  .footer{
-    margin-top:16px;
-    text-align:center;
-    color:var(--muted);
+  .tt-trust-txt{font-size:15px;color:var(--accent-dim);flex:1;min-width:220px}
+  .tt-verify-btn{
+    font-family:"VT323",monospace;
     font-size:16px;
+    color:var(--cyan);
+    background:none;
+    border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);
+    padding:5px 11px;
+    border-radius:2px;
+    cursor:pointer;
     letter-spacing:1px;
+    width:auto;
   }
-  .muted{color:var(--muted)}
-  .hide{display:none!important}
-  @keyframes ticker{
-    0%{transform:translateX(0)}
-    100%{transform:translateX(-50%)}
+  .tt-verify{
+    margin-top:8px;
+    border:1px solid color-mix(in oklab,var(--cyan),#050302 60%);
+    background:#0b1013;
+    padding:14px;
+    border-radius:4px;
   }
-  @keyframes pulse{
-    0%,49%{opacity:1}
-    50%,100%{opacity:.4}
+  .tt-verify h4{margin:0 0 12px;font-size:9px;color:var(--cyan);letter-spacing:1px}
+  .tt-verify-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .tt-step{border-left:2px solid var(--cyan);padding-left:10px}
+  .tt-step b{display:block;font-size:9px;color:var(--cyan);margin-bottom:6px}
+  .tt-step p{margin:0;font-size:16px;color:var(--accent-dim)}
+  .tt-verify-tx{
+    margin-top:12px;
+    border-top:1px dashed color-mix(in oklab,var(--cyan),#050302 60%);
+    padding-top:9px;
+    font-size:15px;
+    color:var(--accent-faint);
   }
-  @media (max-width:1180px){
-    .statusbar,.strip{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .main-grid,.results-grid,.result-main,.hero{grid-template-columns:1fr}
-    .hero-bars{justify-content:flex-start}
+  .tt-verify-tx b{color:var(--cyan);font-family:inherit;font-weight:400}
+  .tt-verify-link{color:var(--cyan)}
+
+  .tt-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-top:14px}
+  .tt-panel{border:1px solid var(--line);background:var(--panel);padding:14px;border-radius:4px}
+  .tt-hd{font-size:11px;color:var(--accent-dim);border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:12px;letter-spacing:1px}
+
+  .tt-board{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+  .tt-cardcell{
+    position:relative;
+    aspect-ratio:3/4;
+    border:1px solid var(--cardborder);
+    background:#0d0904;
+    border-radius:3px;
+    overflow:hidden;
+    animation:tt-cardPulse 6s ease-in-out infinite;
   }
-  @media (max-width:760px){
-    body{font-size:21px}
-    .shell{padding:22px 12px 32px}
-    .statusbar,.strip{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .board-grid{gap:6px}
-    .seat{font-size:8px}
-    .guess-value{font-size:50px}
+  .tt-cardcell.is-empty{opacity:.22;filter:saturate(.55)}
+  .tt-face{
+    position:absolute;
+    inset:0;
+    z-index:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
   }
-  @media (max-width:520px){
-    .statusbar,.strip{grid-template-columns:1fr}
-    .board-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .tt-num{font-family:"Press Start 2P",monospace;font-size:15px;color:var(--accent);text-shadow:0 0 7px var(--accent-glow)}
+  .tt-sub{font-family:"Press Start 2P",monospace;font-size:6px;color:var(--accent-dim);letter-spacing:1px}
+  .tt-cover{
+    position:absolute;
+    inset:0;
+    z-index:3;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    background:repeating-linear-gradient(45deg,var(--foil1) 0 6px,var(--foil2) 6px 12px);
+    border-radius:3px;
+    overflow:hidden;
+  }
+  .tt-sheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 41%,rgba(255,206,112,.10) 50%,transparent 61%);background-size:300% 100%;animation:tt-foilSheen 9s ease-in-out infinite}
+  .tt-cover-t{position:relative;font-family:"Press Start 2P",monospace;font-size:6px;color:var(--foil-t);letter-spacing:1px}
+  .tt-cover-d{position:relative;font-size:15px;color:var(--foil-d)}
+  .tt-youring{
+    position:absolute;
+    inset:0;
+    z-index:5;
+    border:1px solid var(--cyan);
+    box-shadow:inset 0 0 0 1px var(--cyan),0 0 10px rgba(54,245,255,.4);
+    border-radius:3px;
+    pointer-events:none;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+  }
+  .tt-youring span{
+    margin-top:4px;
+    font-family:"Press Start 2P",monospace;
+    font-size:6px;
+    color:var(--cyan);
+    background:#0a0705;
+    padding:2px 4px;
+    border-radius:2px;
+  }
+
+  .tt-reveal{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+  .tt-reveal-hd{font-size:10px;color:var(--accent-dim);letter-spacing:1px;margin-bottom:10px}
+  .tt-hist{display:flex;align-items:flex-end;gap:2px;height:86px;border-bottom:1px solid var(--line)}
+  .tt-hist i{flex:1;min-height:2px;display:block;background:color-mix(in oklab,var(--accent),#050302 42%)}
+  .tt-hist i.tgt{background:var(--red);box-shadow:0 0 8px rgba(255,59,92,.5)}
+  .tt-hist i.you{background:var(--cyan);box-shadow:0 0 8px rgba(54,245,255,.4)}
+  .tt-axis{display:flex;justify-content:space-between;font-size:14px;color:var(--accent-dim);margin-top:3px}
+  .tt-target-wrap{text-align:center;margin:12px 0 6px}
+  .tt-target-wrap small{font-size:14px;color:var(--accent-dim)}
+  .tt-target{font-family:"Press Start 2P",monospace;font-size:40px;color:var(--red);text-shadow:0 0 10px rgba(255,59,92,.6),0 0 26px rgba(255,59,92,.3);margin-top:8px}
+  .tt-resline{font-size:17px;border-top:1px dashed var(--line);padding-top:9px;margin-top:6px}
+  .tt-resline .k{color:var(--accent-dim)}
+  .tt-resline .pay{color:var(--green);text-shadow:0 0 8px rgba(69,230,69,.5)}
+  .tt-verdict{font-family:"Press Start 2P",monospace;font-size:16px;text-align:center;padding:12px 0}
+  .tt-share-card{
+    margin-top:16px;
+    border:1px solid color-mix(in oklab,var(--green),#050302 50%);
+    background:linear-gradient(135deg,#0c1308,#0a0705);
+    border-radius:5px;
+    padding:15px;
+    position:relative;
+    overflow:hidden;
+  }
+  .tt-share-card.loss{border-color:color-mix(in oklab,var(--red),#050302 50%);background:linear-gradient(135deg,#150a0c,#0a0705)}
+  .tt-share-dom{position:absolute;top:11px;right:13px;font-size:16px;color:var(--accent-dim)}
+  .tt-share-logo{font-family:"Press Start 2P",monospace;font-size:12px;letter-spacing:1px;color:var(--accent)}
+  .tt-share-big{font-family:"Press Start 2P",monospace;font-size:24px;margin:14px 0 8px}
+  .tt-share-sub{font-size:17px;color:var(--accent-dim)}
+  .tt-share-seal{font-size:14px;color:var(--accent-faint);margin-top:9px}
+  .tt-btn{
+    width:100%;
+    font-family:"Press Start 2P",monospace;
+    font-size:12px;
+    letter-spacing:1px;
+    color:#0a0705;
+    background:var(--accent);
+    border:none;
+    padding:14px 10px;
+    cursor:pointer;
+    border-bottom:4px solid #7a5210;
+    border-radius:2px;
+  }
+  .tt-btn:hover{filter:brightness(1.08)}
+  .tt-btn:active{transform:translateY(2px);border-bottom-width:2px}
+  .tt-btn.share{margin-top:10px;background:var(--green);border-bottom-color:#1f7a2e}
+  .tt-btn.share.loss{background:var(--accent);border-bottom-color:#7a5210}
+  .tt-btn.red{background:var(--red);border-bottom-color:#7a1226}
+  .tt-btn[disabled]{filter:grayscale(.6) brightness(.6);cursor:not-allowed}
+
+  .tt-readout{
+    font-family:"Press Start 2P",monospace;
+    font-size:40px;
+    text-align:center;
+    padding:14px 0 4px;
+    color:var(--cyan);
+    text-shadow:0 0 6px rgba(54,245,255,.6),0 0 16px rgba(54,245,255,.3);
+  }
+  .tt-range{
+    width:100%;
+    -webkit-appearance:none;
+    appearance:none;
+    height:6px;
+    outline:none;
+    margin:14px 0;
+    border-radius:3px;
+    background:linear-gradient(90deg,var(--accent) 0%,var(--accent) 33%,#241a0c 33%);
+  }
+  .tt-range::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:26px;background:var(--accent);border:2px solid #0a0705;cursor:pointer;box-shadow:0 0 8px rgba(255,176,0,.6);border-radius:2px}
+  .tt-range::-moz-range-thumb{width:16px;height:26px;background:var(--accent);border:2px solid #0a0705;cursor:pointer;border-radius:2px}
+  .tt-chips{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin:6px 0 12px}
+  .tt-chip{width:auto;font-family:"VT323",monospace;font-size:18px;color:var(--accent-dim);border:1px solid var(--line);background:#0d0904;padding:5px 12px;cursor:pointer;border-radius:2px}
+  .tt-chip:hover{color:var(--accent);border-color:var(--accent-dim)}
+  .tt-feeline{display:flex;justify-content:space-between;font-size:18px;color:var(--accent-dim);padding-top:6px;white-space:nowrap}
+  .tt-feeline.top{border-top:1px dashed var(--line);padding-top:10px}
+  .tt-feeline b{color:var(--accent);font-weight:400}
+  .tt-feeline b.base{color:var(--base)}
+  .tt-help{margin-top:10px;color:var(--accent-dim);font-size:17px}
+
+  .tt-wait{text-align:center;padding:10px 0}
+  .tt-wait-h{font-family:"Press Start 2P",monospace;font-size:12px;line-height:1.6;color:var(--cyan);text-shadow:0 0 6px rgba(54,245,255,.5)}
+  .tt-wait-dots{font-size:44px;letter-spacing:6px;color:var(--cyan);text-shadow:0 0 10px rgba(54,245,255,.6);margin:6px 0;animation:tt-dots 1.2s ease-in-out infinite}
+  .tt-wait-p{color:var(--accent-dim);font-size:17px}
+
+  .tt-table{width:100%;border-collapse:collapse;font-size:18px}
+  .tt-table th{font-family:"Press Start 2P",monospace;font-size:8px;color:var(--accent-dim);letter-spacing:1px;padding:6px 6px;border-bottom:1px solid #1c1408;text-align:left}
+  .tt-table td{padding:6px 6px;border-bottom:1px solid #1c1408}
+  .tt-table .num{text-align:right;font-variant-numeric:tabular-nums}
+  .tt-spark-row{display:flex;align-items:flex-end;gap:3px;height:50px;margin-bottom:12px}
+  .tt-spark-row i{flex:1;min-height:2px;display:block;background:var(--accent-dim)}
+  .tt-spark-row i.last{background:var(--red)}
+  .tt-empty{color:var(--accent-faint);font-size:18px;padding:8px 2px}
+
+  .tt-lb{margin-top:14px}
+  .tt-lb-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:6px}
+  .tt-lb-head .you{font-size:16px;color:var(--cyan)}
+  .tt-lb tr.me{background:rgba(54,245,255,.09)}
+
+  .tt-feed{margin-top:16px;border:1px solid var(--line);background:#0c0804;overflow:hidden;white-space:nowrap;border-radius:3px;display:flex;align-items:stretch}
+  .tt-feed-live{flex:none;display:flex;align-items:center;gap:6px;font-family:"Press Start 2P",monospace;font-size:8px;color:#0a0705;background:var(--red);padding:0 10px;letter-spacing:1px}
+  .tt-feed-live i{width:7px;height:7px;border-radius:50%;background:#0a0705;display:inline-block;animation:tt-live 1.1s ease-in-out infinite}
+  .tt-feed-mask{overflow:hidden;flex:1}
+  .tt-ticker-run{display:inline-flex;gap:30px;padding:9px 22px;white-space:nowrap;animation:tt-ticker 34s linear infinite}
+  .tt-ticker-run span{font-size:17px;letter-spacing:.5px}
+
+  .tt-foot{text-align:center;color:var(--accent-faint);font-size:15px;margin-top:16px;letter-spacing:1px}
+  .tt-foot a{color:var(--base)}
+  .tt-foot .tt-sep{color:var(--accent-faint);margin:0 8px}
+  .tt-blink{animation:tt-blink 1s steps(1) infinite}
+
+  .tt-scan{position:absolute;inset:0;pointer-events:none;z-index:90;background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.24) 3px,rgba(0,0,0,.24) 3px);mix-blend-mode:multiply}
+  .tt-vignette{position:absolute;inset:0;pointer-events:none;z-index:91;background:radial-gradient(120% 100% at 50% 50%,rgba(0,0,0,0) 56%,rgba(0,0,0,.5) 100%)}
+  [hidden]{display:none !important}
+
+  @media (max-width:920px){
+    .tt-grid,.tt-verify-grid{grid-template-columns:1fr}
+    .tt-chip-stack{position:static;align-items:center;justify-content:center;flex-direction:row;margin-top:10px}
+    .tt-coin{position:static;display:block;margin-bottom:10px}
+  }
+  @media (max-width:640px){
+    .tt-board{grid-template-columns:repeat(5,1fr)}
   }
 </style>
 </head>
 <body>
-  <main class="shell">
-    <div class="eyebrow">CONFIDENTIAL GUESSING CABINET</div>
+<div class="tt-root" id="ttRoot">
+  <div class="tt-marquee">
+    <span class="tt-coin">●●● CREDIT 99</span>
+    <div class="tt-chip-stack">
+      <span class="tt-chip-inco tt-px">SEALED ▸ INCO</span>
+      <span class="tt-chip-base tt-px">BASE ▸ MAINNET</span>
+    </div>
+    <div class="tt-title tt-px">TWO<span class="frac">·</span>THIRDS</div>
+    <div class="tt-tag">GUESS ⅔ OF THE AVERAGE · LOWEST DISTANCE TAKES THE POT · twothird.fun</div>
+  </div>
 
-    <section class="hero">
-      <div>
-        <h1 class="hero-title">TWO<span class="dot">·</span>THIRDS</h1>
-        <p class="hero-sub">guess 2/3 of the average · lowest distance takes the pot</p>
-        <div class="hero-meta">
-          <span>SEALED ON INCO LIGHTNING</span>
-          <span id="network-chain">LIVE ON BASE</span>
+  <div class="tt-status">
+    <div class="tt-stat"><span>ROUND</span><b class="tt-px" id="sRound">#--</b></div>
+    <div class="tt-stat"><span>POT</span><b class="tt-px" id="sPot" style="color:var(--red)">$0.00</b></div>
+    <div class="tt-stat"><span>PLAYERS</span><b class="tt-px" id="sPlayers">0/50</b></div>
+    <div class="tt-stat"><span>ENTRY</span><b class="tt-px" id="entryFee">$1.00</b></div>
+    <div class="tt-stat"><span>BASE</span><b class="tt-px" id="baseStatus" style="color:var(--base)">MAINNET</b></div>
+    <div class="tt-stat"><span>CLOSES IN</span><b class="tt-px" id="sTimer" style="color:var(--cyan)">00:00</b></div>
+  </div>
+
+  <div class="tt-trust">
+    <span class="tt-trust-badge tt-px">✓ PROVABLY FAIR</span>
+    <span class="tt-trust-chain tt-px" id="trustChain">ON BASE</span>
+    <span class="tt-trust-txt">Guesses are sealed with confidential compute on Inco · the round settles on Base mainnet · winners are paid automatically by the contract</span>
+    <button class="tt-verify-btn" id="verifyBtn" type="button">HOW IT WORKS ↗</button>
+  </div>
+  <div class="tt-verify" id="verifyPanel" hidden>
+    <h4 class="tt-px">HOW SEALING WORKS</h4>
+    <div class="tt-verify-grid">
+      <div class="tt-step"><b class="tt-px">1 · SEAL</b><p>Your number is encrypted in the browser before it is submitted.</p></div>
+      <div class="tt-step"><b class="tt-px">2 · LOCK</b><p>While the round is open, the plaintext guess stays hidden from everyone.</p></div>
+      <div class="tt-step"><b class="tt-px">3 · REVEAL</b><p>At settlement, the keeper submits attested decryptions and the contract pays winners on Base.</p></div>
+    </div>
+    <div class="tt-verify-tx">contract <b id="contractShort">0x…</b> · last settle tx <a class="tt-verify-link" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">0x…</b></a> · verify on Basescan ↗</div>
+  </div>
+
+  <div class="tt-grid">
+    <div class="tt-panel">
+      <div class="tt-hd" id="boardHd">▸ SEALED ENTRIES — VALUES HIDDEN UNTIL SETTLE</div>
+      <div class="tt-board" id="board"></div>
+      <div class="tt-reveal" id="reveal" hidden></div>
+    </div>
+
+    <div class="tt-panel">
+      <div id="control">
+        <div class="tt-hd">▸ YOUR GUESS</div>
+        <div class="tt-readout" id="readout">33</div>
+        <input class="tt-range" id="range" type="range" min="0" max="100" value="33" aria-label="Your guess 0 to 100" />
+        <div class="tt-chips">
+          <button class="tt-chip" data-v="0" type="button">0</button>
+          <button class="tt-chip" data-v="22" type="button">22</button>
+          <button class="tt-chip" data-v="33" type="button">33</button>
+          <button class="tt-chip" data-v="50" type="button">50</button>
         </div>
+        <div class="tt-feeline top"><span>ENTRY FEE</span><b id="sealFee">$1.00 USDC</b></div>
+        <div class="tt-feeline"><span>CHAIN</span><b class="base" id="chainLabel">BASE MAINNET</b></div>
+        <button class="tt-btn" id="btnSeal" type="button">▸ CONNECT WALLET</button>
+        <div class="tt-help" id="walletHelp">Public data is visible without a wallet. Connect only when you want to seal a real onchain guess.</div>
       </div>
-      <div class="hero-bars" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span><span></span>
-      </div>
-    </section>
 
-    <section class="statusbar">
-      <div class="stat"><span>CURRENT ROUND</span><b id="s-round">--</b></div>
-      <div class="stat"><span>LIVE POT</span><b id="s-pot" class="red">--</b></div>
-      <div class="stat"><span>SEALED ENTRIES</span><b id="s-players">--</b></div>
-      <div class="stat"><span>ENTRY FEE</span><b id="meta-entry">--</b></div>
-      <div class="stat"><span>HOUSE RAKE</span><b id="meta-rake">--</b></div>
-      <div class="stat"><span>CLOSES IN</span><b id="s-timer" class="cyan">--</b></div>
-    </section>
-
-    <section class="main-grid">
-      <div class="panel">
-        <div class="panel-head">
-          <span class="panel-title">▸ SEALED FIELD · VALUES HIDDEN UNTIL SETTLE</span>
-          <span class="panel-note" id="seat-count">0 / 100 FILLED</span>
-        </div>
-        <div class="board-grid" id="seat-grid"></div>
-      </div>
-
-      <aside class="side-rail">
-        <div class="panel">
-          <div class="panel-head">
-            <span class="panel-title">▸ WALLET</span>
-            <span class="panel-note" id="wallet-copy">PUBLIC VIEW MODE</span>
-          </div>
-          <button id="btn-connect">▸ CONNECT WALLET</button>
-          <div id="account" class="wallet-status hide"></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <span class="panel-title">▸ YOUR GUESS</span>
-            <span class="panel-note" id="meta-duration">--</span>
-          </div>
-          <div class="guess-value" id="readout">33</div>
-          <input id="range" type="range" min="0" max="100" value="33" aria-label="Your guess" />
-          <div class="chips">
-            <button class="chip" data-v="0">0</button>
-            <button class="chip" data-v="22">22</button>
-            <button class="chip" data-v="33">33</button>
-            <button class="chip" data-v="50">50</button>
-          </div>
-          <div class="kv"><span>SEAL COST</span><strong id="seal-cost">$1.00 USDC</strong></div>
-          <div class="kv"><span>NETWORK</span><strong class="cyan" id="network-pill">Base Sepolia</strong></div>
-          <button id="btn-seal" style="margin-top:12px" disabled>▸ CONNECT FIRST</button>
-          <div id="play-status" class="help-copy" style="margin-top:10px">You can browse the live round without connecting. Wallet is only required to submit a sealed guess.</div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <span class="panel-title">▸ PAYOUT FLOW</span>
-            <span class="panel-note">NO CLAIM STEP</span>
-          </div>
-          <div class="kv"><span>SETTLEMENT</span><strong>KEEPER CALLS `settle()`</strong></div>
-          <div class="kv"><span>WINNER PAYOUT</span><strong class="green">AUTO-SENT ONCHAIN</strong></div>
-          <div class="kv"><span>REMAINDER</span><strong>SEEDS NEXT ROUND</strong></div>
-        </div>
-      </aside>
-    </section>
-
-    <section class="strip">
-      <div class="strip-card"><span>LAST TARGET</span><b id="r-target">--</b></div>
-      <div class="strip-card"><span>AVERAGE</span><b id="r-avg">--</b></div>
-      <div class="strip-card"><span>NET POT</span><b id="r-pot">--</b></div>
-      <div class="strip-card"><span>PAY PER WINNER</span><b id="r-pay" class="green">--</b></div>
-      <div class="strip-card"><span>VERDICT</span><b id="r-verdict" class="red">WAITING FOR FIRST SETTLEMENT</b></div>
-    </section>
-
-    <section class="results-grid">
-      <div class="panel">
-        <div class="panel-head">
-          <span class="panel-title">▸ LAST ROUND SETTLED</span>
-          <span class="panel-note" id="history-count">0 ROUNDS PASSED</span>
-        </div>
-        <div class="result-main">
-          <div class="target-block">
-            <small>2/3 × AVG</small>
-            <b id="result-target-big">--</b>
-            <div class="verdict" id="result-badge">AUTO-PAYOUT</div>
-          </div>
-          <div>
-            <div class="help-copy">Winners are determined onchain from attested decrypted guesses. The same settlement transaction transfers payouts directly to the winning wallets.</div>
-            <div class="winner-copy" id="r-winners">No settled rounds yet.</div>
-          </div>
+      <div id="waiting" hidden>
+        <div class="tt-wait">
+          <div class="tt-wait-h tt-px">YOUR GUESS<br>SEALED</div>
+          <div class="tt-wait-dots">•••</div>
+          <div class="tt-wait-p">the keeper settles the round automatically after it closes</div>
+          <button class="tt-btn red" id="btnSettle" type="button" disabled style="margin-top:14px">▸ KEEPER SETTLES AUTOMATICALLY</button>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-head">
-          <span class="panel-title">▸ TOP WINNERS · LAST 12 SETTLED ROUNDS</span>
-          <span class="panel-note">LIVE</span>
-        </div>
-        <table class="leaderboard-table">
-          <thead>
-            <tr><th>#</th><th>WALLET</th><th class="num">WINS</th><th class="num">TOTAL PAID</th></tr>
-          </thead>
-          <tbody id="leaderboard"><tr><td colspan="4" class="muted">loading leaderboard...</td></tr></tbody>
-        </table>
+      <div id="after" hidden>
+        <button class="tt-btn" id="btnNext" type="button">▸ VIEW LIVE ROUND</button>
       </div>
-    </section>
 
-    <section class="panel" style="margin-top:14px">
-      <div class="panel-head">
-        <span class="panel-title">▸ RECENT ROUNDS ARCHIVE</span>
-        <span class="panel-note">REAL SETTLEMENTS</span>
-      </div>
-      <table class="results-table">
-        <thead>
-          <tr><th>ROUND</th><th class="num">TARGET</th><th>WINNER(S)</th><th class="num">PAID</th></tr>
-        </thead>
-        <tbody id="history"><tr><td colspan="4" class="muted">loading recent rounds...</td></tr></tbody>
+      <div class="tt-hd" style="margin-top:18px">▸ HI-SCORES — RECENT TARGETS</div>
+      <div class="tt-spark-row" id="spark"></div>
+      <table class="tt-table">
+        <thead><tr><th>RND</th><th class="num">TGT</th><th class="num">AVG</th><th>WINNER</th></tr></thead>
+        <tbody id="history"><tr><td colspan="4" class="tt-empty">no rounds settled yet — play one ▸</td></tr></tbody>
       </table>
-    </section>
+    </div>
+  </div>
 
-    <section class="ticker">
-      <div class="ticker-label"><span class="live-dot"></span>LIVE</div>
-      <div class="ticker-window">
-        <div class="ticker-track" id="feed-track">
-          <span class="ticker-item">Waiting for the first settled round...</span>
-          <span class="ticker-item">Waiting for the first settled round...</span>
-        </div>
-      </div>
-    </section>
+  <div class="tt-panel tt-lb">
+    <div class="tt-lb-head">
+      <span class="tt-px" style="font-size:11px;color:var(--accent-dim);letter-spacing:1px">▸ LEADERBOARD · AUTO-PAID WINNERS · BASE</span>
+      <span class="you">YOU · <span id="youRank">#—</span> · <span id="youNet" style="color:var(--green)">+$0.00</span></span>
+    </div>
+    <table class="tt-table tt-lb">
+      <thead><tr><th>#</th><th>PLAYER</th><th class="num">WINS</th><th class="num">LAST PAID</th><th class="num">NET</th></tr></thead>
+      <tbody id="lb"><tr><td colspan="5" class="tt-empty">leaderboard will appear after real settlements</td></tr></tbody>
+    </table>
+  </div>
 
-    <div class="footer">TWO·THIRDS · sealed guessing on Inco Lightning · direct winner payout via contract settlement</div>
-  </main>
-  <script type="module" src="/src/main.js"></script>
+  <div class="tt-feed">
+    <span class="tt-feed-live"><i></i>LIVE</span>
+    <div class="tt-feed-mask"><div class="tt-ticker-run" id="feed"></div></div>
+  </div>
+
+  <div class="tt-foot">
+    TWO·THIRDS · twothird.fun
+    <span class="tt-sep">·</span>
+    <a href="https://x.com/twothirdsfun" target="_blank" rel="noreferrer">X / @twothirdsfun</a>
+    <span class="tt-sep">·</span>
+    <a href="https://github.com/Zhekinmaksim/two-thirds-game" target="_blank" rel="noreferrer">GitHub</a>
+    <span class="tt-sep">·</span>
+    BASE MAINNET
+    <span class="tt-sep">·</span>
+    <span class="tt-blink">▮</span> sealed on Inco, settled on Base
+  </div>
+
+  <div class="tt-scan"></div>
+  <div class="tt-vignette"></div>
+</div>
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>

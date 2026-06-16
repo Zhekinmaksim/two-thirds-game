@@ -8,191 +8,316 @@ import {
   playRound,
 } from "./inco.js";
 
+const MAX_PLAYERS = 50;
+const RECENT_LIMIT = 16;
 const $ = (id) => document.getElementById(id);
-const usd = (v) => "$" + (Number(v) / 1e6).toFixed(2);
-const shortAddr = (address) => `${address.slice(0, 6)}…${address.slice(-4)}`;
+
+const usd = (value) => `$${(Number(value) / 1e6).toFixed(2)}`;
+const shortAddr = (value) => `${value.slice(0, 6)}…${value.slice(-4)}`;
+const shortTx = (value) => `${value.slice(0, 4)}…${value.slice(-4)}`;
+const formatRound = (rid) => `#${String(Number(rid)).padStart(3, "0")}`;
+const explorerBase = CONFIG.chainId === 84532 ? "https://sepolia.basescan.org" : "https://basescan.org";
 
 let wallet = null;
 let account = null;
 let guess = 33;
 let myRid = null;
-let lastShownResult = null;
 let currentRound = null;
 let refreshInFlight = false;
 let gameMeta = null;
-
-function formatDuration(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours && minutes) return `${hours}h ${minutes}m rounds`;
-  if (hours) return `${hours}h rounds`;
-  if (minutes) return `${minutes}m rounds`;
-  return `${seconds}s rounds`;
-}
+let shownResultRid = null;
+let resolvedPersonalResult = null;
+const myGuesses = new Map();
 
 function setGuess(value) {
   guess = Math.max(0, Math.min(100, Math.round(Number(value))));
   $("range").value = guess;
-  $("range").style.setProperty("--p", `${guess}%`);
+  $("range").style.background = `linear-gradient(90deg,var(--accent) 0%,var(--accent) ${guess}%,#241a0c ${guess}%)`;
   $("readout").textContent = guess;
 }
 
-function buildSeatGrid() {
-  const grid = $("seat-grid");
-  grid.innerHTML = "";
+function setContractInfo() {
+  $("contractShort").textContent = shortAddr(CONFIG.game);
+  $("chainLabel").textContent = CONFIG.chainId === 8453 ? "BASE MAINNET" : CONFIG.chainName.toUpperCase();
+  $("baseStatus").textContent = CONFIG.chainId === 8453 ? "MAINNET" : CONFIG.chainName.toUpperCase();
+  $("trustChain").textContent = CONFIG.chainId === 8453 ? "ON BASE MAINNET" : `ON ${CONFIG.chainName.toUpperCase()}`;
+}
 
-  for (let i = 0; i < 100; i += 1) {
-    const seat = document.createElement("div");
-    seat.className = "seat";
-    seat.id = `seat-${i}`;
-    grid.appendChild(seat);
+function buildCard({ mine = false, empty = false } = {}) {
+  return `
+    <div class="tt-cardcell${empty ? " is-empty" : ""}">
+      <div class="tt-face">
+        <span class="tt-num"></span>
+        <span class="tt-sub"></span>
+      </div>
+      <div class="tt-cover">
+        <div class="tt-sheen"></div>
+        <span class="tt-cover-t">SCRATCH</span>
+        <span class="tt-cover-d">◆</span>
+      </div>
+      ${mine ? '<div class="tt-youring"><span>YOU</span></div>' : ""}
+    </div>
+  `;
+}
+
+function renderBoard() {
+  const count = Math.min(Number(currentRound?.playerCount ?? 0), MAX_PLAYERS);
+  const mineSeat = myRid && currentRound && Number(myRid) === Number(currentRound.rid) && count > 0 ? count - 1 : -1;
+  const cards = [];
+
+  for (let i = 0; i < count; i += 1) {
+    cards.push(buildCard({ mine: i === mineSeat }));
   }
-}
-
-function renderSeatGrid(count) {
-  $("seat-count").textContent = `${count} / 100 FILLED`;
-
-  for (let i = 0; i < 100; i += 1) {
-    const seat = $(`seat-${i}`);
-    if (!seat) continue;
-
-    const filled = i < count;
-    const mine = filled && myRid === currentRound?.rid && i === count - 1;
-    seat.classList.toggle("filled", filled);
-    seat.classList.toggle("mine", mine);
-    seat.textContent = filled && !mine ? String(i + 1).padStart(2, "0") : "";
+  for (let i = count; i < MAX_PLAYERS; i += 1) {
+    cards.push(buildCard({ empty: true }));
   }
+
+  $("board").innerHTML = cards.join("");
 }
 
-function renderGameMeta(meta) {
-  gameMeta = meta;
-  $("meta-entry").textContent = `${usd(meta.entryFee)} USDC`;
-  $("seal-cost").textContent = `${usd(meta.entryFee)} USDC`;
-  $("meta-rake").textContent = `${(meta.rakeBps / 100).toFixed(2)}%`;
-  $("meta-duration").textContent = formatDuration(meta.roundDuration);
-  $("network-pill").textContent = CONFIG.chainName;
-  $("network-chain").textContent = `LIVE ON ${CONFIG.chainName.toUpperCase()}`;
-}
-
-function renderHistoryCount(rid) {
-  const passed = Math.max(0, Number(rid) - 1);
-  $("history-count").textContent = `${passed} ROUNDS PASSED`;
-}
-
-function renderRound(round) {
-  currentRound = round;
-  $("s-round").textContent = `#${round.rid}`;
-  $("s-pot").textContent = usd(round.pot);
-  $("s-players").textContent = `${round.playerCount} / 100`;
-  renderHistoryCount(round.rid);
-  renderSeatGrid(round.playerCount);
-  renderTimer();
-}
-
-function renderTimer() {
+function renderStatus() {
   if (!currentRound) return;
 
   const left = Math.max(0, currentRound.closesAt - Math.floor(Date.now() / 1000));
   const mm = String(Math.floor(left / 60)).padStart(2, "0");
   const ss = String(left % 60).padStart(2, "0");
-  $("s-timer").textContent = left > 0 ? `${mm}:${ss}` : "SETTLING";
+  const playerCount = Math.min(currentRound.playerCount, MAX_PLAYERS);
 
-  if (wallet && left > 0 && currentRound.playerCount < 100 && myRid !== currentRound.rid) {
-    $("btn-seal").disabled = false;
-    $("btn-seal").textContent = "▸ INSERT GUESS & SEAL";
+  $("sRound").textContent = formatRound(currentRound.rid);
+  $("sPot").textContent = usd(currentRound.pot);
+  $("sPlayers").textContent = `${playerCount}/${MAX_PLAYERS}`;
+  $("sTimer").textContent = left > 0 ? `${mm}:${ss}` : "SETTLING";
+
+  if (resolvedPersonalResult) {
+    $("boardHd").textContent = "▸ ROUND RESOLVED — VIEW THE LAST REVEAL BELOW";
+  } else if (myRid && Number(myRid) === Number(currentRound.rid)) {
+    $("boardHd").textContent = "▸ SEALED ENTRIES — WAITING TO SETTLE";
+  } else {
+    $("boardHd").textContent = "▸ SEALED ENTRIES — VALUES HIDDEN UNTIL SETTLE";
   }
 }
 
-function showResult(result) {
-  $("r-target").textContent = result.target;
-  $("r-avg").textContent = result.avg;
-  $("r-pot").textContent = usd(result.netPot);
-  $("r-pay").textContent = usd(result.payPerWinner);
-  $("result-target-big").textContent = result.target;
-  $("r-verdict").textContent = result.winners > 1 ? `${result.winners}-WAY SPLIT` : "SINGLE WINNER";
-  $("result-badge").textContent = result.winners > 1 ? "AUTO-SPLIT" : "AUTO-PAYOUT";
-
-  const winnersLabel = result.winnerAddresses?.length
-    ? `Winner${result.winnerAddresses.length > 1 ? "s" : ""}: ${result.winnerAddresses.map(shortAddr).join(" · ")}`
-    : `${result.winners} wallet${result.winners > 1 ? "s" : ""} paid automatically on settlement`;
-  $("r-winners").textContent = winnersLabel;
-
-  if (myRid === result.rid) {
-    $("play-status").textContent = "Your sealed entry has settled. Payout is sent by the contract automatically if you won.";
-    myRid = null;
-  }
+function renderMeta(meta) {
+  gameMeta = meta;
+  $("entryFee").textContent = usd(meta.entryFee);
+  $("sealFee").textContent = `${usd(meta.entryFee)} USDC`;
 }
 
-function renderHistory(rows) {
-  const table = $("history");
-  if (!rows.length) {
-    table.innerHTML = '<tr><td colspan="4" class="muted">No settled rounds yet.</td></tr>';
+function renderVerify(result) {
+  if (!result?.txHash) {
+    $("lastTx").textContent = "0x…";
+    $("lastTxLink").href = `${explorerBase}/address/${CONFIG.game}`;
     return;
   }
 
-  table.innerHTML = "";
-  for (const row of rows) {
-    const tr = document.createElement("tr");
-    const winners = row.winnerAddresses?.length
-      ? row.winnerAddresses.map(shortAddr).join(" · ")
-      : `${row.winners}-way split`;
-    tr.innerHTML = `<td>#${row.rid}</td><td class="num">${row.target}</td><td>${winners}</td><td class="num">${usd(row.payPerWinner)}</td>`;
-    table.appendChild(tr);
-  }
+  $("lastTx").textContent = shortTx(result.txHash);
+  $("lastTxLink").href = `${explorerBase}/tx/${result.txHash}`;
 }
 
-function renderLeaderboard(rows) {
-  const table = $("leaderboard");
-  const byWinner = new Map();
+function renderReveal(result) {
+  if (!result) {
+    $("reveal").hidden = true;
+    $("reveal").innerHTML = "";
+    return;
+  }
 
-  for (const row of rows) {
+  const guesses = result.guesses ?? [];
+  const bins = new Array(20).fill(0);
+  for (const value of guesses) {
+    bins[Math.min(19, Math.floor(value / 5))] += 1;
+  }
+
+  const max = Math.max(1, ...bins);
+  const targetBin = Math.min(19, Math.floor(Number(result.target) / 5));
+  const myGuess = myGuesses.get(Number(result.rid));
+  const myBin = typeof myGuess === "number" ? Math.min(19, Math.floor(myGuess / 5)) : -1;
+  const hist = bins.map((count, index) => {
+    const height = Math.max(8, (count / max) * 88);
+    const cls = index === targetBin ? "tgt" : index === myBin ? "you" : "";
+    return `<i class="${cls}" style="height:${height.toFixed(0)}%"></i>`;
+  }).join("");
+
+  const isPersonal = myRid && Number(myRid) === Number(result.rid);
+  const youWon = isPersonal && account && (result.winnerAddresses ?? []).some((winner) => winner.toLowerCase() === account.toLowerCase());
+  const youOff = typeof myGuess === "number" ? Math.abs(myGuess - Number(result.target)) : null;
+
+  let verdict = `AUTO-PAID ON BASE — ${usd(result.payPerWinner)}`;
+  let verdictColor = "var(--green)";
+  let verdictGlow = "rgba(69,230,69,.45)";
+  let shareBig = `LAST PAYOUT ${usd(result.payPerWinner)}`;
+  let shareClass = "tt-share-card";
+  let shareButtonClass = "tt-btn share";
+  let shareText = `Round ${formatRound(result.rid)} settled on TWO·THIRDS. Target ${result.target}, average ${result.avg}, payout ${usd(result.payPerWinner)} per winner on Base.`;
+
+  if (isPersonal && youWon) {
+    verdict = `★ YOU WIN — ${usd(result.payPerWinner)}`;
+    shareBig = `I WON ${usd(result.payPerWinner)}`;
+    shareText = `I won ${usd(result.payPerWinner)} on TWO·THIRDS — guessed ${myGuess}, target was ${result.target}. Sealed on Inco, settled on Base.`;
+  } else if (isPersonal && youOff !== null) {
+    verdict = `YOU GUESSED ${myGuess} · OFF BY ${youOff}`;
+    verdictColor = "var(--red)";
+    verdictGlow = "rgba(255,59,92,.4)";
+    shareBig = `OFF BY ${youOff}`;
+    shareClass = "tt-share-card loss";
+    shareButtonClass = "tt-btn share loss";
+    shareText = `I guessed ${myGuess} on TWO·THIRDS — target landed on ${result.target}. Sealed on Inco, settled on Base.`;
+  }
+
+  $("reveal").hidden = false;
+  $("reveal").innerHTML = `
+    <div class="tt-reveal-hd tt-px">▸ DECRYPTED FIELD</div>
+    <div class="tt-hist">${hist || '<i style="height:8%"></i>'}</div>
+    <div class="tt-axis"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+    <div class="tt-target-wrap"><small>⅔ × AVG ${result.avg} = </small><div class="tt-target tt-px">${result.target}</div></div>
+    <div class="tt-resline"><span class="k">AVERAGE</span> ${result.avg} &nbsp;|&nbsp; <span class="k">WINNERS</span> ${(result.winnerAddresses ?? []).length || result.winners}</div>
+    <div class="tt-verdict tt-px" style="color:${verdictColor};text-shadow:0 0 10px ${verdictGlow}">${verdict}</div>
+    <div class="tt-resline"><span class="k">NET POT</span> ${usd(result.netPot)} · <span class="k">PAY/WIN</span> <span class="pay">${usd(result.payPerWinner)}</span></div>
+    <div class="${shareClass}">
+      <span class="tt-share-dom">twothird.fun</span>
+      <div class="tt-share-logo">TWO<span style="color:var(--red)">·</span>THIRDS</div>
+      <div class="tt-share-big" style="color:${verdictColor};text-shadow:0 0 14px ${verdictGlow}">${shareBig}</div>
+      <div class="tt-share-sub">target ${result.target} · avg ${result.avg} · round ${formatRound(result.rid)}</div>
+      <div class="tt-share-seal">✓ sealed via confidential compute · auto-paid on Base</div>
+    </div>
+    <button class="${shareButtonClass}" id="btnShare" type="button">▸ SHARE TO 𝕏</button>
+  `;
+
+  $("btnShare").addEventListener("click", () => {
+    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent("https://x.com/twothirdsfun")}`;
+    window.open(intent, "_blank", "noopener");
+  });
+}
+
+function renderHistory(results) {
+  const spark = results.slice(0, 12).reverse().map((row, index, list) => {
+    const height = 8 + (Number(row.target) / 100) * 42;
+    const cls = index === list.length - 1 ? "last" : "";
+    return `<i class="${cls}" style="height:${height.toFixed(0)}px"></i>`;
+  }).join("");
+  $("spark").innerHTML = spark;
+
+  if (!results.length) {
+    $("history").innerHTML = '<tr><td colspan="4" class="tt-empty">no rounds settled yet — play one ▸</td></tr>';
+    return;
+  }
+
+  $("history").innerHTML = results.slice(0, 7).map((row) => {
+    let winner = "auto-paid split";
+    if ((row.winnerAddresses ?? []).length === 1) {
+      winner = shortAddr(row.winnerAddresses[0]);
+    } else if ((row.winnerAddresses ?? []).length > 1) {
+      winner = `${row.winnerAddresses.length}-way split`;
+    }
+
+    return `<tr>
+      <td>${formatRound(row.rid)}</td>
+      <td class="num">${row.target}</td>
+      <td class="num">${row.avg}</td>
+      <td>${winner}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderLeaderboard(results) {
+  const winners = new Map();
+
+  for (const row of results) {
     for (const winner of row.winnerAddresses ?? []) {
-      const current = byWinner.get(winner) ?? { address: winner, wins: 0, totalPaid: 0n };
+      const current = winners.get(winner) ?? { address: winner, wins: 0, net: 0n, lastPaid: 0n };
       current.wins += 1;
-      current.totalPaid += BigInt(row.payPerWinner);
-      byWinner.set(winner, current);
+      current.net += BigInt(row.payPerWinner);
+      current.lastPaid = BigInt(row.payPerWinner);
+      winners.set(winner, current);
     }
   }
 
-  const leaderboard = [...byWinner.values()]
+  const rows = [...winners.values()]
     .sort((a, b) => {
-      if (a.totalPaid === b.totalPaid) return b.wins - a.wins;
-      return a.totalPaid > b.totalPaid ? -1 : 1;
+      if (a.net === b.net) return b.wins - a.wins;
+      return a.net > b.net ? -1 : 1;
     })
     .slice(0, 8);
 
-  if (!leaderboard.length) {
-    table.innerHTML = '<tr><td colspan="4" class="muted">Leaderboard will appear after real settled rounds.</td></tr>';
+  if (!rows.length) {
+    $("lb").innerHTML = '<tr><td colspan="5" class="tt-empty">leaderboard will appear after real settlements</td></tr>';
+    $("youRank").textContent = "#—";
+    $("youNet").textContent = "+$0.00";
     return;
   }
 
-  table.innerHTML = "";
-  for (const [index, row] of leaderboard.entries()) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td class="place">#${index + 1}</td><td class="addr">${shortAddr(row.address)}</td><td class="num win">${row.wins}</td><td class="num win">${usd(row.totalPaid)}</td>`;
-    table.appendChild(tr);
-  }
+  let myRank = null;
+  let myNet = null;
+
+  $("lb").innerHTML = rows.map((row, index) => {
+    const isMe = account && row.address.toLowerCase() === account.toLowerCase();
+    if (isMe) {
+      myRank = index + 1;
+      myNet = row.net;
+    }
+
+    return `<tr class="${isMe ? "me" : ""}">
+      <td>${index === 0 ? "★" : "▸"} #${index + 1}</td>
+      <td style="color:${isMe ? "var(--cyan)" : "var(--accent)"}">${shortAddr(row.address)}</td>
+      <td class="num">${row.wins}</td>
+      <td class="num">${usd(row.lastPaid)}</td>
+      <td class="num" style="color:var(--green)">${usd(row.net)}</td>
+    </tr>`;
+  }).join("");
+
+  $("youRank").textContent = myRank ? `#${myRank}` : "#—";
+  $("youNet").textContent = myNet !== null ? `+${usd(myNet)}` : "+$0.00";
 }
 
-function renderFeed(rows) {
-  const feed = $("feed-track");
-  if (!rows.length) {
-    feed.innerHTML = '<span class="ticker-item">Waiting for the first settled round...</span><span class="ticker-item">Waiting for the first settled round...</span>';
+function renderFeed(results) {
+  if (!results.length) {
+    $("feed").innerHTML = '<span>Waiting for the first settled round...</span><span>Waiting for the first settled round...</span>';
     return;
   }
 
-  const items = rows.slice(0, 8).map((row) => {
-    if (row.winnerAddresses?.length === 1) {
-      return `${shortAddr(row.winnerAddresses[0])} won ${usd(row.payPerWinner)} in round #${row.rid}`;
+  const items = results.slice(0, 8).map((row) => {
+    if ((row.winnerAddresses ?? []).length === 1) {
+      return `${shortAddr(row.winnerAddresses[0])} won ${usd(row.payPerWinner)} in ${formatRound(row.rid)}`;
     }
-    if (row.winnerAddresses?.length > 1) {
-      return `${row.winnerAddresses.length}-way split · ${usd(row.payPerWinner)} each · round #${row.rid}`;
+    if ((row.winnerAddresses ?? []).length > 1) {
+      return `${row.winnerAddresses.length}-way split · ${usd(row.payPerWinner)} each · ${formatRound(row.rid)}`;
     }
-    return `Round #${row.rid} settled for ${usd(row.payPerWinner)} per winner`;
+    return `${formatRound(row.rid)} settled on Base`;
   });
 
-  const doubled = items.concat(items);
-  feed.innerHTML = doubled.map((item) => `<span class="ticker-item">${item}</span>`).join("");
+  $("feed").innerHTML = items.concat(items).map((item) => `<span>${item}</span>`).join("");
+}
+
+function renderPhase() {
+  const hasPendingMyRound = myRid && currentRound && Number(myRid) === Number(currentRound.rid);
+  $("control").hidden = Boolean(hasPendingMyRound || resolvedPersonalResult);
+  $("waiting").hidden = !hasPendingMyRound || Boolean(resolvedPersonalResult);
+  $("after").hidden = !resolvedPersonalResult;
+}
+
+function updateActionCopy() {
+  if (resolvedPersonalResult) {
+    $("btnNext").textContent = "▸ VIEW LIVE ROUND";
+    return;
+  }
+
+  if (!wallet) {
+    $("btnSeal").disabled = false;
+    $("btnSeal").textContent = "▸ CONNECT WALLET";
+    return;
+  }
+
+  if (myRid && currentRound && Number(myRid) === Number(currentRound.rid)) {
+    return;
+  }
+
+  if (currentRound && currentRound.playerCount >= MAX_PLAYERS) {
+    $("btnSeal").disabled = true;
+    $("btnSeal").textContent = "▸ ROUND FULL";
+    return;
+  }
+
+  $("btnSeal").disabled = false;
+  $("btnSeal").textContent = "▸ INSERT GUESS & SEAL";
 }
 
 async function refresh() {
@@ -202,88 +327,108 @@ async function refresh() {
   try {
     const [round, recent] = await Promise.all([
       getCurrentRound(),
-      getRecentResults(12),
+      getRecentResults(RECENT_LIMIT),
     ]);
 
-    renderRound(round);
+    currentRound = round;
+    renderBoard();
+    renderStatus();
     renderHistory(recent);
     renderLeaderboard(recent);
     renderFeed(recent);
 
-    const targetRid = myRid ?? (recent[0]?.rid ?? (round.rid > 1 ? round.rid - 1 : null));
-    if (targetRid && targetRid !== lastShownResult) {
-      const result = await getRoundResult(BigInt(targetRid));
-      if (result) {
-        showResult(result);
-        lastShownResult = targetRid;
+    const targetResultRid = myRid ?? recent[0]?.rid ?? null;
+    let activeResult = null;
+
+    if (targetResultRid) {
+      activeResult = await getRoundResult(BigInt(targetResultRid));
+      if (activeResult) {
+        shownResultRid = targetResultRid;
+        renderVerify(activeResult);
+        renderReveal(activeResult);
+
+        if (myRid && Number(myRid) === Number(activeResult.rid) && Number(currentRound.rid) !== Number(myRid)) {
+          resolvedPersonalResult = activeResult;
+          myRid = null;
+        }
       }
     }
-  } catch {
-    $("play-status").textContent = "Live data is temporarily unavailable. The page will retry automatically.";
+
+    if (!activeResult && shownResultRid === null) {
+      renderVerify(null);
+      renderReveal(null);
+    }
+
+    renderPhase();
+    updateActionCopy();
+  } catch (error) {
+    $("walletHelp").textContent = `Live data is temporarily unavailable. ${error?.message ?? ""}`.trim();
   } finally {
     refreshInFlight = false;
   }
 }
 
-$("btn-connect").addEventListener("click", async () => {
-  try {
-    $("btn-connect").disabled = true;
-    ({ wallet, account } = await connectWallet());
-    $("wallet-copy").textContent = "WALLET CONNECTED";
-    $("account").textContent = `connected ${shortAddr(account)}`;
-    $("account").classList.remove("hide");
-    $("account").classList.add("live");
-    $("btn-connect").classList.add("hide");
-    $("btn-seal").disabled = false;
-    $("btn-seal").textContent = "▸ INSERT GUESS & SEAL";
-    $("play-status").textContent = "Wallet connected. Your guess is encrypted in-browser before it touches the chain.";
-  } catch (error) {
-    $("btn-connect").disabled = false;
-    $("play-status").textContent = `Connect failed: ${error.shortMessage || error.message}`;
-  }
-});
-
-$("btn-seal").addEventListener("click", async () => {
-  if (!wallet) return;
-
-  try {
-    $("btn-seal").disabled = true;
-    $("play-status").textContent = "Encrypting your guess and sealing the entry onchain...";
-    const { rid } = await getCurrentRound();
-    await playRound(wallet, account, guess);
-    myRid = rid;
-    $("play-status").textContent = "Sealed successfully. Your entry is hidden until the keeper settles the round.";
-    await refresh();
-  } catch (error) {
-    $("btn-seal").disabled = false;
-    $("play-status").textContent = `Seal failed: ${error.shortMessage || error.message}`;
-  }
+$("verifyBtn").addEventListener("click", () => {
+  const isHidden = $("verifyPanel").hidden;
+  $("verifyPanel").hidden = !isHidden;
+  $("verifyBtn").textContent = isHidden ? "HIDE ↗" : "HOW IT WORKS ↗";
 });
 
 $("range").addEventListener("input", (event) => setGuess(event.target.value));
-document.querySelectorAll(".chip").forEach((chip) => {
+document.querySelectorAll(".tt-chip").forEach((chip) => {
   chip.addEventListener("click", () => setGuess(chip.dataset.v));
 });
 
+$("btnSeal").addEventListener("click", async () => {
+  try {
+    if (!wallet) {
+      $("btnSeal").disabled = true;
+      $("btnSeal").textContent = "▸ CONNECTING...";
+      ({ wallet, account } = await connectWallet());
+      $("walletHelp").textContent = `Wallet connected: ${shortAddr(account)}. Your guess will be encrypted in-browser before submission.`;
+      updateActionCopy();
+    }
+
+    if (myRid && currentRound && Number(myRid) === Number(currentRound.rid)) return;
+
+    $("btnSeal").disabled = true;
+    $("btnSeal").textContent = "▸ SEALING...";
+    const { rid } = await getCurrentRound();
+    await playRound(wallet, account, guess);
+    myRid = Number(rid);
+    myGuesses.set(Number(rid), guess);
+    resolvedPersonalResult = null;
+    $("walletHelp").textContent = "Guess sealed successfully. Nobody can read the plaintext value until settlement.";
+    await refresh();
+  } catch (error) {
+    $("walletHelp").textContent = `Action failed: ${error.shortMessage || error.message}`;
+    updateActionCopy();
+  }
+});
+
+$("btnNext").addEventListener("click", () => {
+  resolvedPersonalResult = null;
+  renderPhase();
+  updateActionCopy();
+});
+
 async function init() {
-  buildSeatGrid();
+  setContractInfo();
   setGuess(33);
-  renderSeatGrid(0);
-  renderHistoryCount(1);
 
   try {
-    renderGameMeta(await getGameMeta());
+    renderMeta(await getGameMeta());
   } catch {
-    $("meta-entry").textContent = "$1.00 USDC";
-    $("seal-cost").textContent = "$1.00 USDC";
-    $("meta-rake").textContent = "--";
-    $("meta-duration").textContent = "--";
-    $("network-pill").textContent = CONFIG.chainName;
-    $("network-chain").textContent = `LIVE ON ${CONFIG.chainName.toUpperCase()}`;
+    $("entryFee").textContent = "$1.00";
+    $("sealFee").textContent = "$1.00 USDC";
   }
 
+  renderVerify(null);
   await refresh();
-  setInterval(renderTimer, 1000);
+  setInterval(() => {
+    renderStatus();
+    updateActionCopy();
+  }, 1000);
   setInterval(refresh, 5000);
 }
 
