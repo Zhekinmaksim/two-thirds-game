@@ -50,6 +50,7 @@ function setGuess(value) {
 
 function setContractInfo() {
   $("contractShort").textContent = shortAddr(CONFIG.game);
+  $("contractLink").href = `${explorerBase}/address/${CONFIG.game}`;
   $("chainLabel").textContent = CONFIG.chainId === 8453 ? "MAINNET" : "TESTNET";
 }
 
@@ -122,7 +123,7 @@ function renderMeta(meta) {
 
 function renderVerify(result) {
   if (!result?.txHash) {
-    $("lastTx").textContent = "0x…";
+    $("lastTx").textContent = "latest pending";
     $("lastTxLink").href = `${explorerBase}/address/${CONFIG.game}`;
     return;
   }
@@ -446,7 +447,6 @@ $("btnNext").addEventListener("click", () => {
 async function init() {
   setContractInfo();
   setGuess(33);
-  syncVerifyToggle();
   renderBoard();
   renderStatus();
   renderPhase();

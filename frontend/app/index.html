@@ -379,14 +379,14 @@
     <span class="tt-trust-txt">Guesses are sealed with confidential compute on Inco · the round settles automatically · winners are paid directly by the contract</span>
     <button class="tt-verify-btn" id="verifyBtn" type="button">HOW IT WORKS ↗</button>
   </div>
-  <div class="tt-verify" id="verifyPanel">
+  <div class="tt-verify" id="verifyPanel" hidden>
     <h4 class="tt-px">HOW SEALING WORKS</h4>
     <div class="tt-verify-grid">
       <div class="tt-step"><b class="tt-px">1 · SEAL</b><p>Your number is encrypted in the browser before it is submitted.</p></div>
       <div class="tt-step"><b class="tt-px">2 · LOCK</b><p>While the round is open, the plaintext guess stays hidden from everyone.</p></div>
       <div class="tt-step"><b class="tt-px">3 · REVEAL</b><p>At settlement, the keeper submits attested decryptions and the contract pays winners automatically.</p></div>
     </div>
-    <div class="tt-verify-tx">contract <b id="contractShort">0x…</b> · last settle tx <a class="tt-verify-link" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">0x…</b></a> · verify on explorer ↗</div>
+    <div class="tt-verify-tx"><a class="tt-verify-link" id="contractLink" href="#" target="_blank" rel="noreferrer">contract <b id="contractShort">0x…</b></a> · last settle tx <a class="tt-verify-link" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">0x…</b></a> · verify on explorer ↗</div>
   </div>
 
   <div class="tt-grid">
