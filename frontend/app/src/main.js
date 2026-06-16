@@ -389,23 +389,6 @@ async function refresh() {
   }
 }
 
-function syncVerifyToggle() {
-  const isHidden = $("verifyPanel").hidden;
-  $("verifyBtn").textContent = isHidden ? "HOW IT WORKS ↗" : "HIDE DETAILS ↗";
-  $("verifyBtn").setAttribute("aria-expanded", String(!isHidden));
-}
-
-$("verifyBtn").addEventListener("click", () => {
-  const isHidden = $("verifyPanel").hidden;
-  $("verifyPanel").hidden = !isHidden;
-  syncVerifyToggle();
-  if (isHidden) {
-    requestAnimationFrame(() => {
-      $("verifyPanel").scrollIntoView({ block: "nearest", behavior: "smooth" });
-    });
-  }
-});
-
 $("range").addEventListener("input", (event) => setGuess(event.target.value));
 document.querySelectorAll(".tt-chip").forEach((chip) => {
   chip.addEventListener("click", () => setGuess(chip.dataset.v));

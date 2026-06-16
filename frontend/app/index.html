@@ -107,11 +107,12 @@
   .tt-stat span{font-size:15px;color:var(--accent-dim);letter-spacing:1px}
   .tt-stat b{display:block;font-size:12px;margin-top:4px}
 
+  .tt-verify-shell{margin-top:10px}
+  .tt-verify-toggle{position:absolute;opacity:0;pointer-events:none}
   .tt-trust{
     display:flex;
     align-items:center;
     gap:14px;
-    margin-top:10px;
     border:1px solid var(--line);
     background:#0c0804;
     padding:12px 14px;
@@ -129,6 +130,8 @@
   }
   .tt-trust-txt{font-size:16px;color:var(--accent-dim);flex:1;min-width:320px;line-height:1.2}
   .tt-verify-btn{
+    display:inline-flex;
+    align-items:center;
     font-family:"VT323",monospace;
     font-size:17px;
     color:var(--cyan);
@@ -140,6 +143,9 @@
     letter-spacing:1px;
     width:auto;
   }
+  .tt-verify-btn .when-open{display:none}
+  .tt-verify-toggle:checked ~ .tt-trust .tt-verify-btn .when-closed{display:none}
+  .tt-verify-toggle:checked ~ .tt-trust .tt-verify-btn .when-open{display:inline}
   .tt-verify{
     margin-top:8px;
     border:1px solid color-mix(in oklab,var(--accent),#050302 55%);
@@ -147,6 +153,7 @@
     padding:18px;
     border-radius:4px;
   }
+  .tt-verify-toggle:not(:checked) ~ .tt-verify{display:none}
   .tt-verify h4{margin:0 0 14px;font-size:10px;color:var(--cyan);letter-spacing:1px}
   .tt-verify-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   .tt-step{border-left:2px solid var(--cyan);padding-left:10px}
@@ -374,19 +381,25 @@
     <div class="tt-stat"><span>CLOSES IN</span><b class="tt-px" id="sTimer" style="color:var(--cyan)">00:00</b></div>
   </div>
 
-  <div class="tt-trust">
-    <span class="tt-trust-badge tt-px">✓ PROVABLY FAIR</span>
-    <span class="tt-trust-txt">Guesses are sealed with confidential compute on Inco · the round settles automatically · winners are paid directly by the contract</span>
-    <button class="tt-verify-btn" id="verifyBtn" type="button">HOW IT WORKS ↗</button>
-  </div>
-  <div class="tt-verify" id="verifyPanel" hidden>
-    <h4 class="tt-px">HOW SEALING WORKS</h4>
-    <div class="tt-verify-grid">
-      <div class="tt-step"><b class="tt-px">1 · SEAL</b><p>Your number is encrypted in the browser before it is submitted.</p></div>
-      <div class="tt-step"><b class="tt-px">2 · LOCK</b><p>While the round is open, the plaintext guess stays hidden from everyone.</p></div>
-      <div class="tt-step"><b class="tt-px">3 · REVEAL</b><p>At settlement, the keeper submits attested decryptions and the contract pays winners automatically.</p></div>
+  <div class="tt-verify-shell">
+    <input class="tt-verify-toggle" id="verifyToggle" type="checkbox" />
+    <div class="tt-trust">
+      <span class="tt-trust-badge tt-px">✓ PROVABLY FAIR</span>
+      <span class="tt-trust-txt">Guesses are sealed with confidential compute on Inco · the round settles automatically · winners are paid directly by the contract</span>
+      <label class="tt-verify-btn" id="verifyBtn" for="verifyToggle">
+        <span class="when-closed">HOW IT WORKS ↗</span>
+        <span class="when-open">HIDE DETAILS ↗</span>
+      </label>
     </div>
-    <div class="tt-verify-tx"><a class="tt-verify-link" id="contractLink" href="#" target="_blank" rel="noreferrer">contract <b id="contractShort">0x…</b></a> · last settle tx <a class="tt-verify-link" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">0x…</b></a> · verify on explorer ↗</div>
+    <div class="tt-verify" id="verifyPanel">
+      <h4 class="tt-px">HOW SEALING WORKS</h4>
+      <div class="tt-verify-grid">
+        <div class="tt-step"><b class="tt-px">1 · SEAL</b><p>Your number is encrypted in the browser before it is submitted.</p></div>
+        <div class="tt-step"><b class="tt-px">2 · LOCK</b><p>While the round is open, the plaintext guess stays hidden from everyone.</p></div>
+        <div class="tt-step"><b class="tt-px">3 · REVEAL</b><p>At settlement, the keeper submits attested decryptions and the contract pays winners automatically.</p></div>
+      </div>
+      <div class="tt-verify-tx"><a class="tt-verify-link" id="contractLink" href="#" target="_blank" rel="noreferrer">contract <b id="contractShort">0x…</b></a> · last settle tx <a class="tt-verify-link" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">0x…</b></a> · verify on explorer ↗</div>
+    </div>
   </div>
 
   <div class="tt-grid">
