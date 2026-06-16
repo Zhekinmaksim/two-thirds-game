@@ -50,9 +50,7 @@ function setGuess(value) {
 
 function setContractInfo() {
   $("contractShort").textContent = shortAddr(CONFIG.game);
-  $("chainLabel").textContent = CONFIG.chainId === 8453 ? "BASE MAINNET" : CONFIG.chainName.toUpperCase();
-  $("baseStatus").textContent = CONFIG.chainId === 8453 ? "MAINNET" : CONFIG.chainName.toUpperCase();
-  $("trustChain").textContent = CONFIG.chainId === 8453 ? "ON BASE MAINNET" : `ON ${CONFIG.chainName.toUpperCase()}`;
+  $("chainLabel").textContent = CONFIG.chainId === 8453 ? "MAINNET" : "TESTNET";
 }
 
 function buildCard({ mine = false, empty = false } = {}) {
@@ -88,7 +86,14 @@ function renderBoard() {
 }
 
 function renderStatus() {
-  if (!currentRound) return;
+  if (!currentRound) {
+    $("sRound").textContent = "#--";
+    $("sPot").textContent = "--";
+    $("sPlayers").textContent = `0/${MAX_PLAYERS}`;
+    $("sTimer").textContent = "--:--";
+    $("boardHd").textContent = "▸ SEALED ENTRIES — VALUES HIDDEN UNTIL SETTLE";
+    return;
+  }
 
   const left = Math.max(0, currentRound.closesAt - Math.floor(Date.now() / 1000));
   const mm = String(Math.floor(left / 60)).padStart(2, "0");
@@ -153,18 +158,18 @@ function renderReveal(result) {
   const youWon = isPersonal && account && (result.winnerAddresses ?? []).some((winner) => winner.toLowerCase() === account.toLowerCase());
   const youOff = typeof myGuess === "number" ? Math.abs(myGuess - Number(result.target)) : null;
 
-  let verdict = `AUTO-PAID ON BASE — ${usd(result.payPerWinner)}`;
+  let verdict = `AUTO-PAID BY CONTRACT — ${usd(result.payPerWinner)}`;
   let verdictColor = "var(--green)";
   let verdictGlow = "rgba(69,230,69,.45)";
   let shareBig = `LAST PAYOUT ${usd(result.payPerWinner)}`;
   let shareClass = "tt-share-card";
   let shareButtonClass = "tt-btn share";
-  let shareText = `Round ${formatRound(result.rid)} settled on TWO·THIRDS. Target ${result.target}, average ${result.avg}, payout ${usd(result.payPerWinner)} per winner on Base.`;
+  let shareText = `Round ${formatRound(result.rid)} settled on TWO·THIRDS. Target ${result.target}, average ${result.avg}, payout ${usd(result.payPerWinner)} per winner.`;
 
   if (isPersonal && youWon) {
     verdict = `★ YOU WIN — ${usd(result.payPerWinner)}`;
     shareBig = `I WON ${usd(result.payPerWinner)}`;
-    shareText = `I won ${usd(result.payPerWinner)} on TWO·THIRDS — guessed ${myGuess}, target was ${result.target}. Sealed on Inco, settled on Base.`;
+    shareText = `I won ${usd(result.payPerWinner)} on TWO·THIRDS — guessed ${myGuess}, target was ${result.target}. Sealed on Inco and paid automatically by the contract.`;
   } else if (isPersonal && youOff !== null) {
     verdict = `YOU GUESSED ${myGuess} · OFF BY ${youOff}`;
     verdictColor = "var(--red)";
@@ -172,7 +177,7 @@ function renderReveal(result) {
     shareBig = `OFF BY ${youOff}`;
     shareClass = "tt-share-card loss";
     shareButtonClass = "tt-btn share loss";
-    shareText = `I guessed ${myGuess} on TWO·THIRDS — target landed on ${result.target}. Sealed on Inco, settled on Base.`;
+    shareText = `I guessed ${myGuess} on TWO·THIRDS — target landed on ${result.target}. Sealed on Inco and settled automatically by the contract.`;
   }
 
   $("reveal").hidden = false;
@@ -189,7 +194,7 @@ function renderReveal(result) {
       <div class="tt-share-logo">TWO<span style="color:var(--red)">·</span>THIRDS</div>
       <div class="tt-share-big" style="color:${verdictColor};text-shadow:0 0 14px ${verdictGlow}">${shareBig}</div>
       <div class="tt-share-sub">target ${result.target} · avg ${result.avg} · round ${formatRound(result.rid)}</div>
-      <div class="tt-share-seal">✓ sealed via confidential compute · auto-paid on Base</div>
+      <div class="tt-share-seal">✓ sealed via confidential compute · auto-paid by contract</div>
     </div>
     <button class="${shareButtonClass}" id="btnShare" type="button">▸ SHARE TO 𝕏</button>
   `;
@@ -293,7 +298,7 @@ function renderFeed(results) {
     if ((row.winnerAddresses ?? []).length > 1) {
       return `${row.winnerAddresses.length}-way split · ${usd(row.payPerWinner)} each · ${formatRound(row.rid)}`;
     }
-    return `${formatRound(row.rid)} settled on Base`;
+    return `${formatRound(row.rid)} settled automatically`;
   });
 
   $("feed").innerHTML = items.concat(items).map((item) => `<span>${item}</span>`).join("");
@@ -386,7 +391,13 @@ async function refresh() {
 $("verifyBtn").addEventListener("click", () => {
   const isHidden = $("verifyPanel").hidden;
   $("verifyPanel").hidden = !isHidden;
-  $("verifyBtn").textContent = isHidden ? "HIDE ↗" : "HOW IT WORKS ↗";
+  $("verifyBtn").textContent = isHidden ? "HIDE DETAILS ↗" : "HOW IT WORKS ↗";
+  $("verifyBtn").setAttribute("aria-expanded", String(isHidden));
+  if (isHidden) {
+    requestAnimationFrame(() => {
+      $("verifyPanel").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  }
 });
 
 $("range").addEventListener("input", (event) => setGuess(event.target.value));
@@ -430,6 +441,10 @@ $("btnNext").addEventListener("click", () => {
 async function init() {
   setContractInfo();
   setGuess(33);
+  renderBoard();
+  renderStatus();
+  renderPhase();
+  updateActionCopy();
 
   try {
     renderMeta(await getGameMeta());

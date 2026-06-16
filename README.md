@@ -7,7 +7,7 @@ Players pay a fixed `$1` entry fee, submit an encrypted guess from `0..100`, and
 ## Product Summary
 
 - Fixed entry fee: `$1 USDC`
-- Max players per round: `100`
+- Max players per round: `50`
 - Default round duration: `1 hour`
 - Minimum players to settle a live game: `2`
 - House rake: configurable, currently `5%`
@@ -87,7 +87,7 @@ npm start
 Required keeper env:
 
 ```bash
-RPC_URL=https://mainnet.base.org
+RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
 SETTLER_PRIVATE_KEY=
 GAME_ADDRESS=0x8e2d24585e019585587b101765A3F2fC46524503
 CHAIN_ID=8453
@@ -111,7 +111,7 @@ Required frontend env:
 VITE_INCO_PEPPER=mainnet
 VITE_CHAIN_ID=8453
 VITE_CHAIN_NAME=Base
-VITE_RPC_URL=https://mainnet.base.org
+VITE_RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
 VITE_GAME_ADDRESS=0x8e2d24585e019585587b101765A3F2fC46524503
 VITE_TOKEN_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 ```

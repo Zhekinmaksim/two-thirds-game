@@ -7,7 +7,7 @@
 //  - exact entry fee approved, never unlimited.
 
 import {
-  createWalletClient, createPublicClient, custom, http,
+  createWalletClient, createPublicClient, custom, fallback, http,
   decodeFunctionData, defineChain, getAddress, getContract, parseAbi,
 } from "viem";
 import * as IncoLite from "@inco/js/lite";
@@ -29,6 +29,14 @@ export const CONFIG = {
   token: getAddress(requireEnv("VITE_TOKEN_ADDRESS")),
 };
 
+const RPC_FALLBACKS = {
+  8453: [
+    "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
+  ],
+};
+
+const rpcUrls = [...new Set([CONFIG.rpcUrl, ...(RPC_FALLBACKS[CONFIG.chainId] ?? [])])];
+
 const GAME_ABI = parseAbi([
   "function enter(bytes ciphertext)",
   "function roundId() view returns (uint256)",
@@ -49,10 +57,13 @@ const chain = defineChain({
   id: CONFIG.chainId,
   name: CONFIG.chainName,
   nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: [CONFIG.rpcUrl] } },
+  rpcUrls: { default: { http: rpcUrls } },
 });
 
-export const publicClient = createPublicClient({ chain, transport: http(CONFIG.rpcUrl) });
+export const publicClient = createPublicClient({
+  chain,
+  transport: fallback(rpcUrls.map((url) => http(url, { retryCount: 1, timeout: 8_000 }))),
+});
 
 let _inco = null;
 const resultCache = new Map();

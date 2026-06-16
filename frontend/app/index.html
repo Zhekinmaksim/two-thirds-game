@@ -32,7 +32,7 @@
   body{background:#0a0705}
   .tt-root{
     position:relative;
-    max-width:1100px;
+    max-width:1320px;
     margin:0 auto;
     padding:18px 16px 60px;
     font-family:"VT323","Courier New",monospace;
@@ -76,13 +76,13 @@
   }
   .tt-chip-inco,
   .tt-chip-base{
-    font-size:8px;
-    padding:5px 6px;
+    font-size:9px;
+    padding:6px 8px;
     letter-spacing:1px;
     border-radius:2px;
   }
   .tt-chip-inco{color:#0a0705;background:var(--accent)}
-  .tt-chip-base{color:#dce7ff;background:var(--base);box-shadow:0 0 12px rgba(0,82,255,.35)}
+  .tt-chip-base{color:#edf3ff;background:linear-gradient(180deg,#2b64ff 0%,#1547d8 100%);box-shadow:0 0 12px rgba(0,82,255,.26)}
   .tt-title{
     font-size:30px;
     letter-spacing:2px;
@@ -104,46 +104,37 @@
     justify-content:space-between;
     border-radius:4px;
   }
-  .tt-stat span{font-size:14px;color:var(--accent-dim);letter-spacing:1px}
-  .tt-stat b{display:block;font-size:12px;margin-top:4px}
+  .tt-stat span{font-size:16px;color:var(--accent-dim);letter-spacing:1px}
+  .tt-stat b{display:block;font-size:13px;margin-top:5px}
 
   .tt-trust{
     display:flex;
     align-items:center;
-    gap:12px;
+    gap:14px;
     margin-top:10px;
     border:1px solid var(--line);
     background:#0c0804;
-    padding:8px 12px;
+    padding:12px 14px;
     border-radius:4px;
     flex-wrap:wrap;
   }
   .tt-trust-badge{
-    font-size:8px;
+    font-size:9px;
     color:#0a0705;
     background:var(--green);
-    padding:6px 8px;
+    padding:7px 10px;
     border-radius:2px;
     letter-spacing:1px;
     box-shadow:0 0 10px rgba(69,230,69,.45);
   }
-  .tt-trust-chain{
-    font-size:8px;
-    color:#dce7ff;
-    background:var(--base);
-    padding:6px 8px;
-    border-radius:2px;
-    letter-spacing:1px;
-    box-shadow:0 0 12px rgba(0,82,255,.35);
-  }
-  .tt-trust-txt{font-size:15px;color:var(--accent-dim);flex:1;min-width:220px}
+  .tt-trust-txt{font-size:19px;color:var(--accent);flex:1;min-width:320px;line-height:1.28}
   .tt-verify-btn{
     font-family:"VT323",monospace;
-    font-size:16px;
+    font-size:21px;
     color:var(--cyan);
     background:none;
     border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);
-    padding:5px 11px;
+    padding:8px 14px;
     border-radius:2px;
     cursor:pointer;
     letter-spacing:1px;
@@ -151,31 +142,31 @@
   }
   .tt-verify{
     margin-top:8px;
-    border:1px solid color-mix(in oklab,var(--cyan),#050302 60%);
-    background:#0b1013;
-    padding:14px;
+    border:1px solid color-mix(in oklab,var(--accent),#050302 55%);
+    background:#110c08;
+    padding:18px;
     border-radius:4px;
   }
-  .tt-verify h4{margin:0 0 12px;font-size:9px;color:var(--cyan);letter-spacing:1px}
+  .tt-verify h4{margin:0 0 14px;font-size:10px;color:var(--cyan);letter-spacing:1px}
   .tt-verify-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   .tt-step{border-left:2px solid var(--cyan);padding-left:10px}
-  .tt-step b{display:block;font-size:9px;color:var(--cyan);margin-bottom:6px}
-  .tt-step p{margin:0;font-size:16px;color:var(--accent-dim)}
+  .tt-step b{display:block;font-size:10px;color:var(--cyan);margin-bottom:8px}
+  .tt-step p{margin:0;font-size:19px;color:var(--accent);line-height:1.25}
   .tt-verify-tx{
-    margin-top:12px;
-    border-top:1px dashed color-mix(in oklab,var(--cyan),#050302 60%);
-    padding-top:9px;
-    font-size:15px;
-    color:var(--accent-faint);
+    margin-top:14px;
+    border-top:1px dashed color-mix(in oklab,var(--accent),#050302 60%);
+    padding-top:11px;
+    font-size:18px;
+    color:var(--accent-dim);
   }
   .tt-verify-tx b{color:var(--cyan);font-family:inherit;font-weight:400}
   .tt-verify-link{color:var(--cyan)}
 
-  .tt-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-top:14px}
-  .tt-panel{border:1px solid var(--line);background:var(--panel);padding:14px;border-radius:4px}
-  .tt-hd{font-size:11px;color:var(--accent-dim);border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:12px;letter-spacing:1px}
+  .tt-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(420px,1.08fr);gap:16px;margin-top:16px}
+  .tt-panel{border:1px solid var(--line);background:var(--panel);padding:18px;border-radius:4px}
+  .tt-hd{font-size:12px;color:var(--accent-dim);border-bottom:1px solid var(--line);padding-bottom:11px;margin-bottom:14px;letter-spacing:1px}
 
-  .tt-board{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+  .tt-board{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px}
   .tt-cardcell{
     position:relative;
     aspect-ratio:3/4;
@@ -185,7 +176,7 @@
     overflow:hidden;
     animation:tt-cardPulse 6s ease-in-out infinite;
   }
-  .tt-cardcell.is-empty{opacity:.22;filter:saturate(.55)}
+  .tt-cardcell.is-empty{opacity:.56;filter:saturate(.78) brightness(.96)}
   .tt-face{
     position:absolute;
     inset:0;
@@ -196,8 +187,8 @@
     justify-content:center;
     gap:3px;
   }
-  .tt-num{font-family:"Press Start 2P",monospace;font-size:15px;color:var(--accent);text-shadow:0 0 7px var(--accent-glow)}
-  .tt-sub{font-family:"Press Start 2P",monospace;font-size:6px;color:var(--accent-dim);letter-spacing:1px}
+  .tt-num{font-family:"Press Start 2P",monospace;font-size:16px;color:var(--accent);text-shadow:0 0 7px var(--accent-glow)}
+  .tt-sub{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--accent-dim);letter-spacing:1px}
   .tt-cover{
     position:absolute;
     inset:0;
@@ -212,8 +203,8 @@
     overflow:hidden;
   }
   .tt-sheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 41%,rgba(255,206,112,.10) 50%,transparent 61%);background-size:300% 100%;animation:tt-foilSheen 9s ease-in-out infinite}
-  .tt-cover-t{position:relative;font-family:"Press Start 2P",monospace;font-size:6px;color:var(--foil-t);letter-spacing:1px}
-  .tt-cover-d{position:relative;font-size:15px;color:var(--foil-d)}
+  .tt-cover-t{position:relative;font-family:"Press Start 2P",monospace;font-size:7px;color:var(--foil-t);letter-spacing:1px}
+  .tt-cover-d{position:relative;font-size:17px;color:var(--foil-d)}
   .tt-youring{
     position:absolute;
     inset:0;
@@ -229,7 +220,7 @@
   .tt-youring span{
     margin-top:4px;
     font-family:"Press Start 2P",monospace;
-    font-size:6px;
+    font-size:7px;
     color:var(--cyan);
     background:#0a0705;
     padding:2px 4px;
@@ -287,7 +278,7 @@
 
   .tt-readout{
     font-family:"Press Start 2P",monospace;
-    font-size:40px;
+    font-size:42px;
     text-align:center;
     padding:14px 0 4px;
     color:var(--cyan);
@@ -306,27 +297,26 @@
   .tt-range::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:26px;background:var(--accent);border:2px solid #0a0705;cursor:pointer;box-shadow:0 0 8px rgba(255,176,0,.6);border-radius:2px}
   .tt-range::-moz-range-thumb{width:16px;height:26px;background:var(--accent);border:2px solid #0a0705;cursor:pointer;border-radius:2px}
   .tt-chips{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin:6px 0 12px}
-  .tt-chip{width:auto;font-family:"VT323",monospace;font-size:18px;color:var(--accent-dim);border:1px solid var(--line);background:#0d0904;padding:5px 12px;cursor:pointer;border-radius:2px}
+  .tt-chip{width:auto;font-family:"VT323",monospace;font-size:21px;color:var(--accent-dim);border:1px solid var(--line);background:#0d0904;padding:6px 14px;cursor:pointer;border-radius:2px}
   .tt-chip:hover{color:var(--accent);border-color:var(--accent-dim)}
-  .tt-feeline{display:flex;justify-content:space-between;font-size:18px;color:var(--accent-dim);padding-top:6px;white-space:nowrap}
+  .tt-feeline{display:flex;justify-content:space-between;font-size:21px;color:var(--accent-dim);padding-top:8px;white-space:nowrap}
   .tt-feeline.top{border-top:1px dashed var(--line);padding-top:10px}
   .tt-feeline b{color:var(--accent);font-weight:400}
-  .tt-feeline b.base{color:var(--base);text-shadow:0 0 10px rgba(0,82,255,.35)}
-  .tt-help{margin-top:10px;color:var(--accent-dim);font-size:17px}
+  .tt-help{margin-top:12px;color:var(--accent);font-size:19px;line-height:1.28}
 
   .tt-wait{text-align:center;padding:10px 0}
   .tt-wait-h{font-family:"Press Start 2P",monospace;font-size:12px;line-height:1.6;color:var(--cyan);text-shadow:0 0 6px rgba(54,245,255,.5)}
   .tt-wait-dots{font-size:44px;letter-spacing:6px;color:var(--cyan);text-shadow:0 0 10px rgba(54,245,255,.6);margin:6px 0;animation:tt-dots 1.2s ease-in-out infinite}
   .tt-wait-p{color:var(--accent-dim);font-size:17px}
 
-  .tt-table{width:100%;border-collapse:collapse;font-size:18px}
-  .tt-table th{font-family:"Press Start 2P",monospace;font-size:8px;color:var(--accent-dim);letter-spacing:1px;padding:6px 6px;border-bottom:1px solid #1c1408;text-align:left}
-  .tt-table td{padding:6px 6px;border-bottom:1px solid #1c1408}
+  .tt-table{width:100%;border-collapse:collapse;font-size:20px}
+  .tt-table th{font-family:"Press Start 2P",monospace;font-size:9px;color:var(--accent-dim);letter-spacing:1px;padding:8px 6px;border-bottom:1px solid #1c1408;text-align:left}
+  .tt-table td{padding:8px 6px;border-bottom:1px solid #1c1408}
   .tt-table .num{text-align:right;font-variant-numeric:tabular-nums}
   .tt-spark-row{display:flex;align-items:flex-end;gap:3px;height:50px;margin-bottom:12px}
   .tt-spark-row i{flex:1;min-height:2px;display:block;background:var(--accent-dim)}
   .tt-spark-row i.last{background:var(--red)}
-  .tt-empty{color:var(--accent-faint);font-size:18px;padding:8px 2px}
+  .tt-empty{color:var(--accent-faint);font-size:20px;padding:10px 2px}
 
   .tt-lb{margin-top:14px}
   .tt-lb-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:6px}
@@ -340,7 +330,7 @@
   .tt-ticker-run{display:inline-flex;gap:30px;padding:9px 22px;white-space:nowrap;animation:tt-ticker 34s linear infinite}
   .tt-ticker-run span{font-size:17px;letter-spacing:.5px}
 
-  .tt-foot{text-align:center;color:var(--accent-faint);font-size:15px;margin-top:16px;letter-spacing:1px}
+  .tt-foot{text-align:center;color:var(--accent-faint);font-size:17px;margin-top:18px;letter-spacing:1px}
   .tt-foot a{color:var(--base)}
   .tt-foot .tt-sep{color:var(--accent-faint);margin:0 8px}
   .tt-blink{animation:tt-blink 1s steps(1) infinite}
@@ -376,14 +366,12 @@
     <div class="tt-stat"><span>POT</span><b class="tt-px" id="sPot" style="color:var(--red)">$0.00</b></div>
     <div class="tt-stat"><span>PLAYERS</span><b class="tt-px" id="sPlayers">0/50</b></div>
     <div class="tt-stat"><span>ENTRY</span><b class="tt-px" id="entryFee">$1.00</b></div>
-    <div class="tt-stat"><span>BASE</span><b class="tt-px" id="baseStatus" style="color:var(--base)">MAINNET</b></div>
     <div class="tt-stat"><span>CLOSES IN</span><b class="tt-px" id="sTimer" style="color:var(--cyan)">00:00</b></div>
   </div>
 
   <div class="tt-trust">
     <span class="tt-trust-badge tt-px">✓ PROVABLY FAIR</span>
-    <span class="tt-trust-chain tt-px" id="trustChain">ON BASE</span>
-    <span class="tt-trust-txt">Guesses are sealed with confidential compute on Inco · the round settles on Base mainnet · winners are paid automatically by the contract</span>
+    <span class="tt-trust-txt">Guesses are sealed with confidential compute on Inco · the round settles automatically · winners are paid directly by the contract</span>
     <button class="tt-verify-btn" id="verifyBtn" type="button">HOW IT WORKS ↗</button>
   </div>
   <div class="tt-verify" id="verifyPanel" hidden>
@@ -391,9 +379,9 @@
     <div class="tt-verify-grid">
       <div class="tt-step"><b class="tt-px">1 · SEAL</b><p>Your number is encrypted in the browser before it is submitted.</p></div>
       <div class="tt-step"><b class="tt-px">2 · LOCK</b><p>While the round is open, the plaintext guess stays hidden from everyone.</p></div>
-      <div class="tt-step"><b class="tt-px">3 · REVEAL</b><p>At settlement, the keeper submits attested decryptions and the contract pays winners on Base.</p></div>
+      <div class="tt-step"><b class="tt-px">3 · REVEAL</b><p>At settlement, the keeper submits attested decryptions and the contract pays winners automatically.</p></div>
     </div>
-    <div class="tt-verify-tx">contract <b id="contractShort">0x…</b> · last settle tx <a class="tt-verify-link" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">0x…</b></a> · verify on Basescan ↗</div>
+    <div class="tt-verify-tx">contract <b id="contractShort">0x…</b> · last settle tx <a class="tt-verify-link" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">0x…</b></a> · verify on explorer ↗</div>
   </div>
 
   <div class="tt-grid">
@@ -415,7 +403,7 @@
           <button class="tt-chip" data-v="50" type="button">50</button>
         </div>
         <div class="tt-feeline top"><span>ENTRY FEE</span><b id="sealFee">$1.00 USDC</b></div>
-        <div class="tt-feeline"><span>CHAIN</span><b class="base" id="chainLabel">BASE MAINNET</b></div>
+        <div class="tt-feeline"><span>NETWORK</span><b id="chainLabel">MAINNET</b></div>
         <button class="tt-btn" id="btnSeal" type="button">▸ CONNECT WALLET</button>
         <div class="tt-help" id="walletHelp">Public data is visible without a wallet. Connect only when you want to seal a real onchain guess.</div>
       </div>
@@ -444,7 +432,7 @@
 
   <div class="tt-panel tt-lb">
     <div class="tt-lb-head">
-      <span class="tt-px" style="font-size:11px;color:var(--accent-dim);letter-spacing:1px">▸ LEADERBOARD · AUTO-PAID WINNERS · BASE</span>
+      <span class="tt-px" style="font-size:11px;color:var(--accent-dim);letter-spacing:1px">▸ LEADERBOARD · AUTO-PAID WINNERS</span>
       <span class="you">YOU · <span id="youRank">#—</span> · <span id="youNet" style="color:var(--green)">+$0.00</span></span>
     </div>
     <table class="tt-table tt-lb">
@@ -465,9 +453,7 @@
     <span class="tt-sep">·</span>
     <a href="https://github.com/Zhekinmaksim/two-thirds-game" target="_blank" rel="noreferrer">GitHub</a>
     <span class="tt-sep">·</span>
-    BASE MAINNET
-    <span class="tt-sep">·</span>
-    <span class="tt-blink">▮</span> sealed on Inco, settled on Base
+    <span class="tt-blink">▮</span> sealed on Inco, settled automatically
   </div>
 
   <div class="tt-scan"></div>

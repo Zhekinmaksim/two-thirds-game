@@ -13,7 +13,7 @@
 import "dotenv/config";
 import nodeHttp from "node:http";
 import {
-  createPublicClient, createWalletClient, http, defineChain,
+  createPublicClient, createWalletClient, fallback, http, defineChain,
   parseAbi, getContract, bytesToHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -28,16 +28,25 @@ if (!RPC_URL || !SETTLER_PRIVATE_KEY || !GAME_ADDRESS || !CHAIN_ID) {
   console.error("Missing env. See .env.example"); process.exit(1);
 }
 
+const RPC_FALLBACKS = {
+  8453: [
+    "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
+  ],
+};
+
+const rpcUrls = [...new Set([RPC_URL, ...(RPC_FALLBACKS[Number(CHAIN_ID)] ?? [])])];
+
 const chain = defineChain({
   id: Number(CHAIN_ID),
   name: "host",
   nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: [RPC_URL] } },
+  rpcUrls: { default: { http: rpcUrls } },
 });
 
 const account = privateKeyToAccount(SETTLER_PRIVATE_KEY);
-const publicClient = createPublicClient({ chain, transport: http(RPC_URL) });
-const wallet = createWalletClient({ account, chain, transport: http(RPC_URL) });
+const transport = fallback(rpcUrls.map((url) => http(url, { retryCount: 1, timeout: 8_000 })));
+const publicClient = createPublicClient({ chain, transport });
+const wallet = createWalletClient({ account, chain, transport });
 
 const ABI = parseAbi([
   "function roundId() view returns (uint256)",
