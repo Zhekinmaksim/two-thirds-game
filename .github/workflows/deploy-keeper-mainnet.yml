@@ -1,6 +1,12 @@
 name: Deploy Keeper Mainnet
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "keeper/**"
+      - ".github/workflows/deploy-keeper-mainnet.yml"
   workflow_dispatch:
 
 jobs:

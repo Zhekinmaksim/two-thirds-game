@@ -160,9 +160,8 @@ Workflow: `.github/workflows/deploy-keeper-mainnet.yml`
 
 Trigger:
 
-- manual `workflow_dispatch` only
-
-This keeps mainnet deployment explicit and separate from testnet pushes.
+- push to `main` when keeper files change
+- manual `workflow_dispatch`
 
 ## Manual Deployment Commands
 
