@@ -163,11 +163,18 @@
     margin-top:14px;
     border-top:1px dashed color-mix(in oklab,var(--accent),#050302 60%);
     padding-top:11px;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px 18px;
+    align-items:start;
     font-size:15px;
     color:var(--accent-dim);
   }
+  .tt-verify-item{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .tt-verify-k{font-size:10px;color:var(--accent-faint);letter-spacing:1px}
   .tt-verify-tx b{color:var(--cyan);font-family:inherit;font-weight:400}
   .tt-verify-link{color:var(--cyan)}
+  .tt-verify-link.is-disabled{color:var(--accent-faint);pointer-events:none;text-decoration:none}
 
   .tt-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(420px,1.08fr);gap:16px;margin-top:16px}
   .tt-panel{border:1px solid var(--line);background:var(--panel);padding:18px;border-radius:4px}
@@ -398,7 +405,16 @@
         <div class="tt-step"><b class="tt-px">2 · LOCK</b><p>While the round is open, the plaintext guess stays hidden from everyone.</p></div>
         <div class="tt-step"><b class="tt-px">3 · REVEAL</b><p>At settlement, the keeper submits attested decryptions and the contract pays winners automatically.</p></div>
       </div>
-      <div class="tt-verify-tx"><a class="tt-verify-link" id="contractLink" href="#" target="_blank" rel="noreferrer">contract <b id="contractShort">0x…</b></a> · last settle tx <a class="tt-verify-link" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">0x…</b></a> · verify on explorer ↗</div>
+      <div class="tt-verify-tx">
+        <div class="tt-verify-item">
+          <span class="tt-verify-k tt-px">CONTRACT</span>
+          <a class="tt-verify-link" id="contractLink" href="#" target="_blank" rel="noreferrer"><b id="contractShort">0x…</b></a>
+        </div>
+        <div class="tt-verify-item">
+          <span class="tt-verify-k tt-px">LAST SETTLED TX</span>
+          <a class="tt-verify-link is-disabled" id="lastTxLink" href="#" target="_blank" rel="noreferrer"><b id="lastTx">waiting for settle</b></a>
+        </div>
+      </div>
     </div>
   </div>
 

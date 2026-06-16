@@ -123,13 +123,15 @@ function renderMeta(meta) {
 
 function renderVerify(result) {
   if (!result?.txHash) {
-    $("lastTx").textContent = "latest pending";
-    $("lastTxLink").href = `${explorerBase}/address/${CONFIG.game}`;
+    $("lastTx").textContent = "waiting for settle";
+    $("lastTxLink").removeAttribute("href");
+    $("lastTxLink").classList.add("is-disabled");
     return;
   }
 
   $("lastTx").textContent = shortTx(result.txHash);
   $("lastTxLink").href = `${explorerBase}/tx/${result.txHash}`;
+  $("lastTxLink").classList.remove("is-disabled");
 }
 
 function renderReveal(result) {
