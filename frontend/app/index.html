@@ -164,19 +164,24 @@
 
   .tt-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(420px,1.08fr);gap:16px;margin-top:16px}
   .tt-panel{border:1px solid var(--line);background:var(--panel);padding:18px;border-radius:4px}
-  .tt-hd{font-size:11px;color:var(--accent-dim);border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:13px;letter-spacing:1px}
+  .tt-hd{font-size:13px;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:13px;letter-spacing:1px}
 
   .tt-board{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px}
   .tt-cardcell{
     position:relative;
     aspect-ratio:3/4;
+    min-height:72px;
     border:1px solid var(--cardborder);
     background:#0d0904;
     border-radius:3px;
     overflow:hidden;
     animation:tt-cardPulse 6s ease-in-out infinite;
   }
-  .tt-cardcell.is-empty{opacity:.56;filter:saturate(.78) brightness(.96)}
+  .tt-cardcell.is-empty{
+    opacity:.9;
+    filter:saturate(.92) brightness(1.06);
+    box-shadow:inset 0 0 0 1px rgba(255,176,0,.08);
+  }
   .tt-face{
     position:absolute;
     inset:0;
@@ -187,8 +192,8 @@
     justify-content:center;
     gap:3px;
   }
-  .tt-num{font-family:"Press Start 2P",monospace;font-size:20px;color:var(--accent);text-shadow:0 0 7px var(--accent-glow)}
-  .tt-sub{font-family:"Press Start 2P",monospace;font-size:6px;color:var(--accent-dim);letter-spacing:1px}
+  .tt-num{font-family:"Press Start 2P",monospace;font-size:22px;color:var(--accent);text-shadow:0 0 7px var(--accent-glow)}
+  .tt-sub{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--accent-dim);letter-spacing:1px}
   .tt-cover{
     position:absolute;
     inset:0;
@@ -203,8 +208,8 @@
     overflow:hidden;
   }
   .tt-sheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 41%,rgba(255,206,112,.10) 50%,transparent 61%);background-size:300% 100%;animation:tt-foilSheen 9s ease-in-out infinite}
-  .tt-cover-t{position:relative;font-family:"Press Start 2P",monospace;font-size:6px;color:var(--foil-t);letter-spacing:1px}
-  .tt-cover-d{position:relative;font-size:15px;color:var(--foil-d)}
+  .tt-cover-t{position:relative;font-family:"Press Start 2P",monospace;font-size:7px;color:var(--foil-t);letter-spacing:1px}
+  .tt-cover-d{position:relative;font-size:16px;color:var(--foil-d)}
   .tt-youring{
     position:absolute;
     inset:0;
@@ -374,7 +379,7 @@
     <span class="tt-trust-txt">Guesses are sealed with confidential compute on Inco · the round settles automatically · winners are paid directly by the contract</span>
     <button class="tt-verify-btn" id="verifyBtn" type="button">HOW IT WORKS ↗</button>
   </div>
-  <div class="tt-verify" id="verifyPanel" hidden>
+  <div class="tt-verify" id="verifyPanel">
     <h4 class="tt-px">HOW SEALING WORKS</h4>
     <div class="tt-verify-grid">
       <div class="tt-step"><b class="tt-px">1 · SEAL</b><p>Your number is encrypted in the browser before it is submitted.</p></div>

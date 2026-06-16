@@ -388,11 +388,16 @@ async function refresh() {
   }
 }
 
+function syncVerifyToggle() {
+  const isHidden = $("verifyPanel").hidden;
+  $("verifyBtn").textContent = isHidden ? "HOW IT WORKS ↗" : "HIDE DETAILS ↗";
+  $("verifyBtn").setAttribute("aria-expanded", String(!isHidden));
+}
+
 $("verifyBtn").addEventListener("click", () => {
   const isHidden = $("verifyPanel").hidden;
   $("verifyPanel").hidden = !isHidden;
-  $("verifyBtn").textContent = isHidden ? "HIDE DETAILS ↗" : "HOW IT WORKS ↗";
-  $("verifyBtn").setAttribute("aria-expanded", String(isHidden));
+  syncVerifyToggle();
   if (isHidden) {
     requestAnimationFrame(() => {
       $("verifyPanel").scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -441,6 +446,7 @@ $("btnNext").addEventListener("click", () => {
 async function init() {
   setContractInfo();
   setGuess(33);
+  syncVerifyToggle();
   renderBoard();
   renderStatus();
   renderPhase();
