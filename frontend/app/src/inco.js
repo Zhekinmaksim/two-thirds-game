@@ -8,7 +8,7 @@
 
 import {
   createWalletClient, createPublicClient, custom, http,
-  decodeFunctionData, defineChain, getContract, parseAbi,
+  decodeFunctionData, defineChain, getAddress, getContract, parseAbi,
 } from "viem";
 import * as IncoLite from "@inco/js/lite";
 import { handleTypes } from "@inco/js";
@@ -25,8 +25,8 @@ export const CONFIG = {
   chainId: Number(requireEnv("VITE_CHAIN_ID")),
   chainName: requireEnv("VITE_CHAIN_NAME"),
   rpcUrl: requireEnv("VITE_RPC_URL"),
-  game: requireEnv("VITE_GAME_ADDRESS"),
-  token: requireEnv("VITE_TOKEN_ADDRESS"),
+  game: getAddress(requireEnv("VITE_GAME_ADDRESS")),
+  token: getAddress(requireEnv("VITE_TOKEN_ADDRESS")),
 };
 
 const GAME_ABI = parseAbi([

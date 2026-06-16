@@ -14,7 +14,7 @@
     --cyan:#36f5ff;
     --green:#45e645;
     --red:#ff3b5c;
-    --base:#4cc3ff;
+    --base:#0052ff;
     --bg:#0a0705;
     --panel:#0f0a06;
     --accent-dim:color-mix(in oklab,var(--accent),#050302 30%);
@@ -41,8 +41,10 @@
     line-height:1.1;
     background:radial-gradient(120% 85% at 50% 0%,#1a1107 0%,var(--bg) 60%,#050302 100%);
     -webkit-font-smoothing:none;
+    font-smooth:never;
+    text-rendering:optimizeSpeed;
   }
-  .tt-px{font-family:"Press Start 2P",monospace;font-weight:400}
+  .tt-px{font-family:"Press Start 2P",monospace;font-weight:400;font-smooth:never}
   .tt-root a{color:inherit;text-decoration:none}
   .tt-root a:hover{filter:brightness(1.08)}
 
@@ -80,7 +82,7 @@
     border-radius:2px;
   }
   .tt-chip-inco{color:#0a0705;background:var(--accent)}
-  .tt-chip-base{color:#06111a;background:var(--base);box-shadow:0 0 10px rgba(76,195,255,.18)}
+  .tt-chip-base{color:#dce7ff;background:var(--base);box-shadow:0 0 12px rgba(0,82,255,.35)}
   .tt-title{
     font-size:30px;
     letter-spacing:2px;
@@ -127,12 +129,12 @@
   }
   .tt-trust-chain{
     font-size:8px;
-    color:#06111a;
+    color:#dce7ff;
     background:var(--base);
     padding:6px 8px;
     border-radius:2px;
     letter-spacing:1px;
-    box-shadow:0 0 10px rgba(76,195,255,.25);
+    box-shadow:0 0 12px rgba(0,82,255,.35);
   }
   .tt-trust-txt{font-size:15px;color:var(--accent-dim);flex:1;min-width:220px}
   .tt-verify-btn{
@@ -309,7 +311,7 @@
   .tt-feeline{display:flex;justify-content:space-between;font-size:18px;color:var(--accent-dim);padding-top:6px;white-space:nowrap}
   .tt-feeline.top{border-top:1px dashed var(--line);padding-top:10px}
   .tt-feeline b{color:var(--accent);font-weight:400}
-  .tt-feeline b.base{color:var(--base)}
+  .tt-feeline b.base{color:var(--base);text-shadow:0 0 10px rgba(0,82,255,.35)}
   .tt-help{margin-top:10px;color:var(--accent-dim);font-size:17px}
 
   .tt-wait{text-align:center;padding:10px 0}

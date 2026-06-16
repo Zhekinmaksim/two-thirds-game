@@ -29,6 +29,18 @@ let shownResultRid = null;
 let resolvedPersonalResult = null;
 const myGuesses = new Map();
 
+function formatUiError(error, fallback) {
+  const raw = error?.shortMessage || error?.message || "";
+  if (!raw) return fallback;
+
+  const firstLine = raw.split("\n")[0].trim();
+  if (firstLine.startsWith("Address ") || firstLine.includes("hex value of 20 bytes")) {
+    return fallback;
+  }
+  if (firstLine.length > 180) return fallback;
+  return `${fallback} ${firstLine}`;
+}
+
 function setGuess(value) {
   guess = Math.max(0, Math.min(100, Math.round(Number(value))));
   $("range").value = guess;
@@ -362,7 +374,10 @@ async function refresh() {
     renderPhase();
     updateActionCopy();
   } catch (error) {
-    $("walletHelp").textContent = `Live data is temporarily unavailable. ${error?.message ?? ""}`.trim();
+    $("walletHelp").textContent = formatUiError(
+      error,
+      "Live data is temporarily unavailable. Retrying automatically.",
+    );
   } finally {
     refreshInFlight = false;
   }
