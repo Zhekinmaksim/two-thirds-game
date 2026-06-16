@@ -51,7 +51,6 @@ function setGuess(value) {
 function setContractInfo() {
   $("contractShort").textContent = shortAddr(CONFIG.game);
   $("contractLink").href = `${explorerBase}/address/${CONFIG.game}`;
-  $("chainLabel").textContent = CONFIG.chainId === 8453 ? "MAINNET" : "TESTNET";
 }
 
 function buildCard({ mine = false, empty = false } = {}) {
@@ -119,6 +118,7 @@ function renderMeta(meta) {
   gameMeta = meta;
   $("entryFee").textContent = usd(meta.entryFee);
   $("sealFee").textContent = `${usd(meta.entryFee)} USDC`;
+  $("sealCost").textContent = usd(meta.entryFee);
 }
 
 function renderVerify(result) {
@@ -442,6 +442,7 @@ async function init() {
   } catch {
     $("entryFee").textContent = "$1.00";
     $("sealFee").textContent = "$1.00 USDC";
+    $("sealCost").textContent = "$1.00";
   }
 
   renderVerify(null);

@@ -41,10 +41,8 @@
     line-height:1.1;
     background:radial-gradient(120% 85% at 50% 0%,#1a1107 0%,var(--bg) 60%,#050302 100%);
     -webkit-font-smoothing:none;
-    font-smooth:never;
-    text-rendering:optimizeSpeed;
   }
-  .tt-px{font-family:"Press Start 2P",monospace;font-weight:400;font-smooth:never}
+  .tt-px{font-family:"Press Start 2P",monospace;font-weight:400}
   .tt-root a{color:inherit;text-decoration:none}
   .tt-root a:hover{filter:brightness(1.08)}
 
@@ -76,8 +74,8 @@
   }
   .tt-chip-inco,
   .tt-chip-base{
-    font-size:9px;
-    padding:6px 8px;
+    font-size:8px;
+    padding:5px 6px;
     letter-spacing:1px;
     border-radius:2px;
   }
@@ -104,7 +102,7 @@
     justify-content:space-between;
     border-radius:4px;
   }
-  .tt-stat span{font-size:15px;color:var(--accent-dim);letter-spacing:1px}
+  .tt-stat span{font-size:14px;color:var(--accent-dim);letter-spacing:1px}
   .tt-stat b{display:block;font-size:12px;margin-top:4px}
 
   .tt-verify-shell{margin-top:10px}
@@ -112,32 +110,32 @@
   .tt-trust{
     display:flex;
     align-items:center;
-    gap:14px;
+    gap:12px;
     border:1px solid var(--line);
     background:#0c0804;
-    padding:12px 14px;
+    padding:8px 12px;
     border-radius:4px;
     flex-wrap:wrap;
   }
   .tt-trust-badge{
-    font-size:9px;
+    font-size:8px;
     color:#0a0705;
     background:var(--green);
-    padding:7px 10px;
+    padding:6px 8px;
     border-radius:2px;
     letter-spacing:1px;
     box-shadow:0 0 10px rgba(69,230,69,.45);
   }
-  .tt-trust-txt{font-size:16px;color:var(--accent-dim);flex:1;min-width:320px;line-height:1.2}
+  .tt-trust-txt{font-size:15px;color:var(--accent-dim);flex:1;min-width:220px}
   .tt-verify-btn{
     display:inline-flex;
     align-items:center;
     font-family:"VT323",monospace;
-    font-size:17px;
+    font-size:16px;
     color:var(--cyan);
     background:none;
     border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);
-    padding:8px 14px;
+    padding:5px 11px;
     border-radius:2px;
     cursor:pointer;
     letter-spacing:1px;
@@ -148,27 +146,27 @@
   .tt-verify-toggle:checked ~ .tt-trust .tt-verify-btn .when-open{display:inline}
   .tt-verify{
     margin-top:8px;
-    border:1px solid color-mix(in oklab,var(--accent),#050302 55%);
-    background:#110c08;
-    padding:18px;
+    border:1px solid color-mix(in oklab,var(--cyan),#050302 60%);
+    background:#0b1013;
+    padding:14px;
     border-radius:4px;
   }
   .tt-verify-toggle:not(:checked) ~ .tt-verify{display:none}
-  .tt-verify h4{margin:0 0 14px;font-size:10px;color:var(--cyan);letter-spacing:1px}
+  .tt-verify h4{margin:0 0 12px;font-size:9px;color:var(--cyan);letter-spacing:1px}
   .tt-verify-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   .tt-step{border-left:2px solid var(--cyan);padding-left:10px}
-  .tt-step b{display:block;font-size:10px;color:var(--cyan);margin-bottom:8px}
-  .tt-step p{margin:0;font-size:16px;color:var(--accent-dim);line-height:1.2}
+  .tt-step b{display:block;font-size:9px;color:var(--cyan);margin-bottom:6px}
+  .tt-step p{margin:0;font-size:16px;color:var(--accent-dim)}
   .tt-verify-tx{
-    margin-top:14px;
-    border-top:1px dashed color-mix(in oklab,var(--accent),#050302 60%);
-    padding-top:11px;
+    margin-top:12px;
+    border-top:1px dashed color-mix(in oklab,var(--cyan),#050302 60%);
+    padding-top:9px;
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:12px 18px;
     align-items:start;
     font-size:15px;
-    color:var(--accent-dim);
+    color:var(--accent-faint);
   }
   .tt-verify-item{display:flex;flex-direction:column;gap:5px;min-width:0}
   .tt-verify-k{font-size:10px;color:var(--accent-faint);letter-spacing:1px}
@@ -178,7 +176,7 @@
 
   .tt-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(420px,1.08fr);gap:16px;margin-top:16px}
   .tt-panel{border:1px solid var(--line);background:var(--panel);padding:18px;border-radius:4px}
-  .tt-hd{font-size:13px;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:13px;letter-spacing:1px}
+  .tt-hd{font-size:11px;color:var(--accent-dim);border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:12px;letter-spacing:1px}
 
   .tt-board{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px}
   .tt-cardcell{
@@ -206,8 +204,8 @@
     justify-content:center;
     gap:3px;
   }
-  .tt-num{font-family:"Press Start 2P",monospace;font-size:22px;color:var(--accent);text-shadow:0 0 7px var(--accent-glow)}
-  .tt-sub{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--accent-dim);letter-spacing:1px}
+  .tt-num{font-family:"Press Start 2P",monospace;font-size:15px;color:var(--accent);text-shadow:0 0 7px var(--accent-glow)}
+  .tt-sub{font-family:"Press Start 2P",monospace;font-size:6px;color:var(--accent-dim);letter-spacing:1px}
   .tt-cover{
     position:absolute;
     inset:0;
@@ -222,8 +220,8 @@
     overflow:hidden;
   }
   .tt-sheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 41%,rgba(255,206,112,.10) 50%,transparent 61%);background-size:300% 100%;animation:tt-foilSheen 9s ease-in-out infinite}
-  .tt-cover-t{position:relative;font-family:"Press Start 2P",monospace;font-size:7px;color:var(--foil-t);letter-spacing:1px}
-  .tt-cover-d{position:relative;font-size:16px;color:var(--foil-d)}
+  .tt-cover-t{position:relative;font-family:"Press Start 2P",monospace;font-size:6px;color:var(--foil-t);letter-spacing:1px}
+  .tt-cover-d{position:relative;font-size:15px;color:var(--foil-d)}
   .tt-youring{
     position:absolute;
     inset:0;
@@ -297,7 +295,7 @@
 
   .tt-readout{
     font-family:"Press Start 2P",monospace;
-    font-size:42px;
+    font-size:40px;
     text-align:center;
     padding:14px 0 4px;
     color:var(--cyan);
@@ -318,7 +316,7 @@
   .tt-chips{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin:6px 0 12px}
   .tt-chip{width:auto;font-family:"VT323",monospace;font-size:18px;color:var(--accent-dim);border:1px solid var(--line);background:#0d0904;padding:5px 12px;cursor:pointer;border-radius:2px}
   .tt-chip:hover{color:var(--accent);border-color:var(--accent-dim)}
-  .tt-feeline{display:flex;justify-content:space-between;font-size:18px;color:var(--accent-dim);padding-top:7px;white-space:nowrap}
+  .tt-feeline{display:flex;justify-content:space-between;font-size:18px;color:var(--accent-dim);padding-top:6px;white-space:nowrap}
   .tt-feeline.top{border-top:1px dashed var(--line);padding-top:10px}
   .tt-feeline b{color:var(--accent);font-weight:400}
   .tt-help{margin-top:10px;color:var(--accent-dim);font-size:16px;line-height:1.24}
@@ -349,7 +347,7 @@
   .tt-ticker-run{display:inline-flex;gap:30px;padding:9px 22px;white-space:nowrap;animation:tt-ticker 34s linear infinite}
   .tt-ticker-run span{font-size:17px;letter-spacing:.5px}
 
-  .tt-foot{text-align:center;color:var(--accent-faint);font-size:17px;margin-top:18px;letter-spacing:1px}
+  .tt-foot{text-align:center;color:var(--accent-faint);font-size:15px;margin-top:16px;letter-spacing:1px}
   .tt-foot a{color:var(--base)}
   .tt-foot .tt-sep{color:var(--accent-faint);margin:0 8px}
   .tt-blink{animation:tt-blink 1s steps(1) infinite}
@@ -437,7 +435,7 @@
           <button class="tt-chip" data-v="50" type="button">50</button>
         </div>
         <div class="tt-feeline top"><span>ENTRY FEE</span><b id="sealFee">$1.00 USDC</b></div>
-        <div class="tt-feeline"><span>NETWORK</span><b id="chainLabel">MAINNET</b></div>
+        <div class="tt-feeline"><span>YOU PAY ON SEAL</span><b id="sealCost">$1.00</b></div>
         <button class="tt-btn" id="btnSeal" type="button">▸ CONNECT WALLET</button>
         <div class="tt-help" id="walletHelp">Public data is visible without a wallet. Connect only when you want to seal a real onchain guess.</div>
       </div>
