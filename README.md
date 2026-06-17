@@ -41,7 +41,7 @@ two-thirds-game/
 ## Current Mainnet State
 
 - Frontend production URL: `https://two-thirds-game.vercel.app`
-- Mainnet contract: `0x8bc731584F257550d4bf39a06811658e8a89255f`
+- Mainnet contract: `0x0e9D534dE28045A33D8aB94Dbebc6822816ABe1B`
 - Network: `Base`
 - Mainnet keeper Fly app: `two-thirds-keeper-mainnet`
 - Testnet keeper Fly app: `two-thirds-keeper-testnet`
@@ -91,7 +91,7 @@ Required keeper env:
 ```bash
 RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
 SETTLER_PRIVATE_KEY=
-GAME_ADDRESS=0x8bc731584F257550d4bf39a06811658e8a89255f
+GAME_ADDRESS=0x0e9D534dE28045A33D8aB94Dbebc6822816ABe1B
 CHAIN_ID=8453
 INCO_PEPPER=mainnet
 TICK_SECONDS=30
@@ -114,7 +114,7 @@ VITE_INCO_PEPPER=mainnet
 VITE_CHAIN_ID=8453
 VITE_CHAIN_NAME=Base
 VITE_RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
-VITE_GAME_ADDRESS=0x8bc731584F257550d4bf39a06811658e8a89255f
+VITE_GAME_ADDRESS=0x0e9D534dE28045A33D8aB94Dbebc6822816ABe1B
 VITE_TOKEN_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 ```
 

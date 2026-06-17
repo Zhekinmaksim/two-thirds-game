@@ -18,7 +18,7 @@ const DEFAULTS = {
   chainId: 8453,
   chainName: "Base",
   rpcUrl: "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
-  game: "0x8bc731584F257550d4bf39a06811658e8a89255f",
+  game: "0x0e9D534dE28045A33D8aB94Dbebc6822816ABe1B",
   token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 };
 
@@ -76,7 +76,8 @@ let inco = null;
 let gameMetaPromise = null;
 
 const GAME_ABI = parseAbi([
-  "function enter(bytes ciphertext)",
+  "function enter(bytes ciphertext) payable",
+  "function inputFee() view returns (uint256)",
   "function roundId() view returns (uint256)",
   "function entryFee() view returns (uint256)",
   "function rakeBps() view returns (uint16)",
@@ -359,6 +360,11 @@ export async function playRound(wallet, account, pick) {
     abi: GAME_ABI,
     functionName: "entryFee",
   });
+  const inputFee = await publicClient.readContract({
+    address: CONFIG.game,
+    abi: GAME_ABI,
+    functionName: "inputFee",
+  });
 
   const encryptedPick = clampPick(pick);
   const client = await getInco();
@@ -386,7 +392,7 @@ export async function playRound(wallet, account, pick) {
     client: { public: publicClient, wallet },
   });
 
-  const tx = await game.write.enter([ciphertext], { account });
+  const tx = await game.write.enter([ciphertext], { account, value: inputFee });
   await publicClient.waitForTransactionReceipt({ hash: tx });
   return tx;
 }

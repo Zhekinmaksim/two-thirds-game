@@ -19,12 +19,13 @@ import {DecryptionAttestation} from "@inco/lightning/lightning-parts/DecryptionA
 // supplied to settle() matches - so settle must provide the true guesses or
 // verification fails, exactly like real attestations.
 contract MockInco {
+    uint256 internal constant INPUT_FEE = 1 gwei;
     uint256 private nonce;
     mapping(bytes32 => uint256) public valueOf; // handle => plaintext (test-only)
     mapping(bytes32 => mapping(address => bool)) public isAllowed;
 
     function getFee() external pure returns (uint256) {
-        return 0;
+        return INPUT_FEE;
     }
 
     function newEuint256(bytes calldata ciphertext, address /*user*/)
@@ -32,6 +33,7 @@ contract MockInco {
         payable
         returns (bytes32 handle)
     {
+        require(msg.value == INPUT_FEE, "bad fee");
         handle = keccak256(abi.encode(ciphertext, nonce++));
         valueOf[handle] = abi.decode(ciphertext, (uint256));
     }

@@ -36,6 +36,8 @@ import {euint256, ebool, e} from "@inco/lightning/Lib.sol";
 contract TwoThirds {
     using e for *;
 
+    address public constant INCO_MAINNET = 0x4b9911b0191B0b6a6eA8F2Ed562e20Cff5AC8624;
+
     // ---- config ----
     IERC20  public immutable token;       // payment token (e.g. USDC)
     uint256 public entryFee;              // fixed entry, in token's smallest unit (1 USDC = 1e6)
@@ -113,12 +115,15 @@ contract TwoThirds {
      *
      * Pull-payment: caller must approve `entryFee` of `token` to this contract first.
      */
-    function enter(bytes calldata ciphertext) external nonReentrant {
+    function enter(bytes calldata ciphertext) external payable nonReentrant {
         require(!paused, "paused");
         Round storage r = rounds[roundId];
         require(block.timestamp < r.closesAt, "round closed");
         require(r.players.length < MAX_PLAYERS, "round full");
         require(!entered[roundId][msg.sender], "already entered");
+        require(msg.value >= inputFee(), "inco fee");
+
+        uint256 balanceBefore = address(this).balance - msg.value;
 
         // collect the fixed entry fee
         _safeTransferFrom(token, msg.sender, address(this), entryFee);
@@ -131,6 +136,12 @@ contract TwoThirds {
         entered[roundId][msg.sender] = true;
         r.players.push(msg.sender);
         r.pot += entryFee;
+
+        uint256 refund = address(this).balance - balanceBefore;
+        if (refund > 0) {
+            (bool ok,) = payable(msg.sender).call{value: refund}("");
+            require(ok, "fee refund failed");
+        }
 
         emit Entered(roundId, msg.sender, r.pot);
     }
@@ -236,6 +247,10 @@ contract TwoThirds {
 
     function getPlayers(uint256 rid) external view returns (address[] memory) {
         return rounds[rid].players;
+    }
+
+    function inputFee() public view returns (uint256) {
+        return IIncoFeeSource(INCO_MAINNET).getFee();
     }
 
     /// Encrypted guess handles for a round, in player order — feed these to the
@@ -345,4 +360,8 @@ contract TwoThirds {
 interface IERC20 {
     function transfer(address to, uint256 amount) external returns (bool);
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
+}
+
+interface IIncoFeeSource {
+    function getFee() external view returns (uint256);
 }

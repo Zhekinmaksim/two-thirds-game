@@ -38,9 +38,10 @@ contract TwoThirdsTest is Test {
 
     function _enter(address player, uint256 guess) internal {
         token.mint(player, FEE);
+        vm.deal(player, 1 ether);
         vm.startPrank(player);
         token.approve(address(game), FEE);
-        game.enter(_ct(guess));
+        game.enter{value: game.inputFee()}(_ct(guess));
         vm.stopPrank();
     }
 
@@ -117,11 +118,13 @@ contract TwoThirdsTest is Test {
         assertEq(count, 100, "exactly 100 seated");
 
         address late = address(uint160(9999));
+        uint256 feeQuote = game.inputFee();
         token.mint(late, FEE);
+        vm.deal(late, 1 ether);
         vm.startPrank(late);
         token.approve(address(game), FEE);
         vm.expectRevert(bytes("round full"));
-        game.enter(_ct(50));
+        game.enter{value: feeQuote}(_ct(50));
         vm.stopPrank();
 
         assertEq(token.balanceOf(late), FEE, "no fee taken on rejected entry");
@@ -232,5 +235,35 @@ contract TwoThirdsTest is Test {
 
         assertEq(token.balanceOf(altTreasury), rake, "owner may recover treasury credit");
         assertEq(game.pendingTreasury(), 0, "treasury credit cleared");
+    }
+
+    function test_Enter_RevertsWithoutIncoFee() public {
+        address player = address(0xABCD);
+        token.mint(player, FEE);
+        vm.deal(player, 1 ether);
+
+        vm.startPrank(player);
+        token.approve(address(game), FEE);
+        vm.expectRevert(bytes("inco fee"));
+        game.enter(_ct(21));
+        vm.stopPrank();
+    }
+
+    function test_Enter_RefundsExcessNativeFee() public {
+        address player = address(0xD00D);
+        uint256 quotedFee = game.inputFee();
+        uint256 overpay = quotedFee + 123;
+
+        token.mint(player, FEE);
+        vm.deal(player, 1 ether);
+
+        uint256 before = player.balance;
+        vm.startPrank(player);
+        token.approve(address(game), FEE);
+        game.enter{value: overpay}(_ct(12));
+        vm.stopPrank();
+
+        assertEq(before - player.balance, quotedFee, "only inco fee is retained");
+        assertEq(address(game).balance, 0, "contract should not retain native fee dust");
     }
 }
