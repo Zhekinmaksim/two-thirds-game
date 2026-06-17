@@ -353,6 +353,27 @@ export async function connectWallet() {
   throw lastError ?? new Error("Wallet connection failed.");
 }
 
+export async function resumeWalletConnection({ ensureCorrectChain = false } = {}) {
+  const providers = getInjectedProviders();
+  if (!providers.length) return null;
+
+  for (const provider of providers) {
+    try {
+      const accounts = await provider.request({ method: "eth_accounts" });
+      if (!accounts?.length) continue;
+
+      if (ensureCorrectChain) await ensureChain(provider);
+
+      const wallet = createWalletClient({ chain, transport: custom(provider) });
+      return { wallet, account: getAddress(accounts[0]) };
+    } catch {
+      // ignore provider and continue to the next injected wallet
+    }
+  }
+
+  return null;
+}
+
 export async function playRound(wallet, account, pick) {
   requireGameAddress();
   requireTokenAddress();

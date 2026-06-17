@@ -4,6 +4,7 @@ const RECENT_LIMIT = 12;
 const REFRESH_MS = 12_000;
 const STORAGE_PENDING = "twothirds:pending";
 const STORAGE_LAST_RESULT = "twothirds:last-result";
+const STORAGE_ACCOUNT = "twothirds:account";
 
 const $ = (id) => document.getElementById(id);
 
@@ -19,6 +20,7 @@ const state = {
   activeResult: null,
   pending: loadStoredJson(STORAGE_PENDING),
   lastResultRef: loadStoredJson(STORAGE_LAST_RESULT),
+  lastKnownAccount: loadStoredJson(STORAGE_ACCOUNT),
   refreshInFlight: false,
   lastRefreshAt: 0,
   connecting: false,
@@ -120,6 +122,11 @@ function persistLastResult(ref) {
   saveStoredJson(STORAGE_LAST_RESULT, ref);
 }
 
+function persistKnownAccount(account) {
+  state.lastKnownAccount = account;
+  saveStoredJson(STORAGE_ACCOUNT, account);
+}
+
 function getPersonalPick() {
   if (state.activeResult?.yourPick !== undefined) return state.activeResult.yourPick;
   if (state.pending?.pick !== undefined) return state.pending.pick;
@@ -170,7 +177,7 @@ function renderMeta() {
   const entry = state.meta?.entryFee ?? 1_000_000n;
   $("sEntry").textContent = usd(entry);
   $("sealFee").textContent = `${usd(entry)} USDC`;
-  $("networkFee").textContent = "wallet approval + gas";
+  $("networkFee").textContent = "Base · gas ~$0.01";
 }
 
 function renderStatus() {
@@ -444,6 +451,7 @@ function renderResultPanel() {
 
 function renderLeaderboard() {
   const entryFee = state.meta?.entryFee ?? 1_000_000n;
+  const viewerAccount = (state.account ?? state.lastKnownAccount ?? "").toLowerCase();
   const stats = new Map();
 
   for (const result of state.results) {
@@ -492,7 +500,7 @@ function renderLeaderboard() {
   let youNet = "+$0.00";
 
   $("lb").innerHTML = rows.map((row, index) => {
-    const isYou = Boolean(state.account) && row.address.toLowerCase() === state.account.toLowerCase();
+    const isYou = Boolean(viewerAccount) && row.address.toLowerCase() === viewerAccount;
     const winPct = row.games ? Math.round((row.wins / row.games) * 100) : 0;
     const netText = `${row.net >= 0n ? "+" : "-"}${usd(row.net >= 0n ? row.net : -row.net)}`;
 
@@ -581,6 +589,15 @@ async function refresh() {
     const integration = await loadIntegration();
     window.__ttConfig = integration.CONFIG;
 
+    if (!state.wallet || !state.account) {
+      const resumed = await integration.resumeWalletConnection().catch(() => null);
+      if (resumed) {
+        state.wallet = resumed.wallet;
+        state.account = resumed.account;
+        persistKnownAccount(resumed.account);
+      }
+    }
+
     const [round, recent, meta] = await Promise.all([
       integration.getCurrentRound(),
       integration.getRecentResults(RECENT_LIMIT).catch(() => []),
@@ -621,9 +638,11 @@ async function handleConnectAndEnter() {
     if (!state.account) {
       state.connecting = true;
       renderControl();
-      const { wallet, account } = await integration.connectWallet();
+      const resumed = await integration.resumeWalletConnection({ ensureCorrectChain: true }).catch(() => null);
+      const { wallet, account } = resumed ?? await integration.connectWallet();
       state.wallet = wallet;
       state.account = account;
+      persistKnownAccount(account);
       state.connecting = false;
       setStatusMessage("");
       renderControl();
@@ -693,6 +712,14 @@ async function init() {
 
   const integration = await loadIntegration();
   window.__ttConfig = integration.CONFIG;
+
+  const resumed = await integration.resumeWalletConnection().catch(() => null);
+  if (resumed) {
+    state.wallet = resumed.wallet;
+    state.account = resumed.account;
+    persistKnownAccount(resumed.account);
+  }
+
   renderContractInfo(integration.CONFIG);
   renderMeta();
   renderStatus();
