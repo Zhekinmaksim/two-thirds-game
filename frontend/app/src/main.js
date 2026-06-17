@@ -177,7 +177,7 @@ function renderStatus() {
   if (!state.currentRound) {
     $("sRound").textContent = "#--";
     $("sPot").textContent = "$0.00";
-    $("sPlayers").textContent = `0 / ${MAX_PLAYERS}`;
+    $("sPlayers").textContent = "0";
     $("sTimer").textContent = "--:--";
     return;
   }
@@ -185,7 +185,7 @@ function renderStatus() {
   const players = toNumber(state.currentRound.playerCount);
   $("sRound").textContent = formatRound(state.currentRound.rid);
   $("sPot").textContent = usd(state.currentRound.pot);
-  $("sPlayers").textContent = `${players} / ${MAX_PLAYERS}`;
+  $("sPlayers").textContent = String(players);
   $("sTimer").textContent = formatTimer(currentSecondsLeft());
 }
 
