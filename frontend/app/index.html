@@ -24,7 +24,7 @@
   .tt-root a{color:inherit;text-decoration:none}
   .tt-root a:hover{filter:brightness(1.08)}
 
-  @keyframes tt-foilSheen{0%{transform:translate3d(-165%,0,0) skewX(-18deg)}100%{transform:translate3d(165%,0,0) skewX(-18deg)}}
+  @keyframes tt-foilSheen{0%{transform:translate3d(-132%,0,0) skewX(-18deg);opacity:.2}50%{opacity:.82}100%{transform:translate3d(132%,0,0) skewX(-18deg);opacity:.2}}
   @keyframes tt-scratchWipe{0%{clip-path:inset(0 0 0 0);opacity:1}100%{clip-path:inset(0 0 0 100%);opacity:0}}
   @keyframes tt-decodeIn{0%{opacity:0;filter:blur(5px);transform:scale(.6)}100%{opacity:1;filter:blur(0);transform:scale(1)}}
   @keyframes tt-sparkPop{0%{opacity:0;transform:translateY(3px) scale(0)}22%{opacity:1;transform:translateY(-2px) scale(1)}100%{opacity:0;transform:translateY(-13px) scale(.3)}}
@@ -54,7 +54,8 @@
   .tt-status .s b{display:block;font-size:13px;margin-top:4px}
   .tt-trust{display:flex;align-items:center;gap:12px;margin-top:10px;border:1px solid var(--line);background:#0c0804;padding:8px 12px;border-radius:4px;flex-wrap:wrap}
   .tt-trust .b{font-size:9px;color:#0a0705;background:var(--green);padding:6px 9px;border-radius:2px;letter-spacing:1px;box-shadow:0 0 10px rgba(69,230,69,.45)}
-  .tt-trust .t{font-size:15px;color:var(--accent-dim);flex:1;min-width:220px}
+  .tt-trust .pay{font-size:9px;color:#0a0705;background:var(--cyan);padding:6px 9px;border-radius:2px;letter-spacing:1px;box-shadow:0 0 10px rgba(54,245,255,.34)}
+  .tt-trust .t{font-size:18px;color:var(--accent-dim);flex:1;min-width:280px;line-height:1.15}
   .tt-verify-btn{font-family:'VT323',monospace;font-size:16px;color:var(--cyan);background:none;border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);padding:5px 11px;border-radius:2px;cursor:pointer;letter-spacing:1px}
   .tt-verify{margin-top:8px;border:1px solid color-mix(in oklab,var(--cyan),#050302 60%);background:#0b1013;padding:14px;border-radius:4px}
   .tt-verify h4{margin:0 0 12px;font-size:10px;color:var(--cyan);letter-spacing:1px}
@@ -79,7 +80,7 @@
   .tt-cardcell .face .cnum2{font-family:'Press Start 2P',monospace;font-size:12px;color:var(--accent);text-shadow:0 0 6px color-mix(in oklab,var(--accent),transparent 55%)}
   .tt-cardcell .face .cnt{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--cyan);text-shadow:0 0 5px rgba(54,245,255,.5)}
   .tt-cardcell .cover{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;border-radius:4px;overflow:hidden;background:repeating-linear-gradient(45deg,color-mix(in oklab,var(--accent),#050302 66%) 0 6px,color-mix(in oklab,var(--accent),#050302 80%) 6px 12px);box-shadow:inset 0 1px 0 color-mix(in oklab,var(--accent),transparent 52%),inset 0 -3px 6px rgba(0,0,0,.45);contain:paint;isolation:isolate}
-  .tt-cardcell .cover .csheen{position:absolute;top:-14%;bottom:-14%;left:-42%;width:54%;background:linear-gradient(90deg,transparent 0%,rgba(255,245,220,.06) 22%,rgba(255,245,220,.28) 48%,rgba(255,245,220,.08) 76%,transparent 100%);opacity:.7;animation:tt-foilSheen 12s linear infinite;will-change:transform;transform:translate3d(-165%,0,0) skewX(-18deg);backface-visibility:hidden}
+  .tt-cardcell .cover .csheen{position:absolute;top:-14%;bottom:-14%;left:-42%;width:54%;background:linear-gradient(90deg,transparent 0%,rgba(255,245,220,.04) 18%,rgba(255,245,220,.24) 48%,rgba(255,245,220,.06) 82%,transparent 100%);opacity:.24;animation:tt-foilSheen 7.6s cubic-bezier(.4,0,.2,1) infinite alternate;will-change:transform,opacity;transform:translate3d(-132%,0,0) skewX(-18deg);backface-visibility:hidden}
   .tt-cardcell .cover .cnum{position:relative;font-family:'Press Start 2P',monospace;font-size:12px;color:#fff3d8;text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 7px color-mix(in oklab,var(--accent),transparent 35%)}
   .tt-cardcell.avail{cursor:pointer}
   .tt-cardcell.avail:hover{border-color:var(--accent);transform:translateY(-1px)}
@@ -183,6 +184,7 @@
 
   <div class="tt-trust">
     <span class="b tt-px">✓ PROVABLY FAIR</span>
+    <span class="pay tt-px">AUTOMATIC PAYOUT · NO CLAIM REQUIRED</span>
     <span class="t">Encrypted choices powered by Inco Lightning — any number of players can pick the same card and no pick is visible until the round closes</span>
     <button class="tt-verify-btn" id="verifyBtn" type="button">HOW IT WORKS ↗</button>
   </div>
