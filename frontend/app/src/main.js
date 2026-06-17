@@ -51,6 +51,7 @@ function setGuess(value) {
 function setContractInfo() {
   $("contractShort").textContent = shortAddr(CONFIG.game);
   $("contractLink").href = `${explorerBase}/address/${CONFIG.game}`;
+  $("verifyOnchainLink").href = `${explorerBase}/address/${CONFIG.game}`;
 }
 
 function buildCard({ mine = false, empty = false } = {}) {
@@ -126,12 +127,14 @@ function renderVerify(result) {
     $("lastTx").textContent = "waiting for settle";
     $("lastTxLink").removeAttribute("href");
     $("lastTxLink").classList.add("is-disabled");
+    $("verifyOnchainLink").href = `${explorerBase}/address/${CONFIG.game}`;
     return;
   }
 
   $("lastTx").textContent = shortTx(result.txHash);
   $("lastTxLink").href = `${explorerBase}/tx/${result.txHash}`;
   $("lastTxLink").classList.remove("is-disabled");
+  $("verifyOnchainLink").href = `${explorerBase}/tx/${result.txHash}`;
 }
 
 function renderReveal(result) {
@@ -402,9 +405,26 @@ async function refresh() {
   }
 }
 
-$("range").addEventListener("input", (event) => setGuess(event.target.value));
-document.querySelectorAll(".tt-chip").forEach((chip) => {
-  chip.addEventListener("click", () => setGuess(chip.dataset.v));
+$("verifyBtn").addEventListener("click", (event) => {
+  const panel = $("verifyPanel");
+  const open = panel.hidden;
+  panel.hidden = !open;
+  event.currentTarget.textContent = open ? "HIDE ↗" : "HOW IT WORKS ↗";
+});
+
+const onGuessInput = (event) => setGuess(event.target.value);
+$("range").addEventListener("input", onGuessInput);
+$("range").addEventListener("change", onGuessInput);
+$("range").addEventListener("touchmove", onGuessInput, { passive: true });
+$("range").addEventListener("pointermove", (event) => {
+  if (event.buttons !== 1) return;
+  setGuess(event.target.value);
+});
+
+$("control").addEventListener("click", (event) => {
+  const chip = event.target.closest(".tt-chip");
+  if (!chip) return;
+  setGuess(chip.dataset.v);
 });
 
 $("btnSeal").addEventListener("click", async () => {

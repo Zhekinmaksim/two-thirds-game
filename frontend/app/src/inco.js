@@ -130,21 +130,29 @@ async function hydrateSettledLog(log) {
   return base;
 }
 
-function getInjectedProvider() {
-  const { ethereum } = window;
-  if (!ethereum) return null;
+function providerRank(provider) {
+  if (provider?.isRabby) return 0;
+  if (provider?.isMetaMask) return 1;
+  if (provider?.isCoinbaseWallet) return 2;
+  if (provider?.isPhantom) return 3;
+  return 9;
+}
 
-  const providers = Array.isArray(ethereum.providers) && ethereum.providers.length
-    ? ethereum.providers
-    : [ethereum];
+function getInjectedProviders() {
+  const candidates = [];
+  if (window.rabby?.ethereum) candidates.push(window.rabby.ethereum);
+  if (window.ethereum?.providers?.length) candidates.push(...window.ethereum.providers);
+  if (window.ethereum) candidates.push(window.ethereum);
 
-  const preferred =
-    providers.find((provider) => provider?.isMetaMask) ||
-    providers.find((provider) => provider?.isRabby) ||
-    providers.find((provider) => provider?.isCoinbaseWallet) ||
-    providers.find((provider) => typeof provider?.request === "function");
+  const unique = [];
+  const seen = new Set();
+  for (const provider of candidates) {
+    if (!provider || typeof provider.request !== "function" || seen.has(provider)) continue;
+    seen.add(provider);
+    unique.push(provider);
+  }
 
-  return preferred ?? null;
+  return unique.sort((left, right) => providerRank(left) - providerRank(right));
 }
 
 function getErrorCode(error) {
@@ -190,27 +198,37 @@ async function ensureChain(provider) {
 
 // ---------------------------------------------------------------- connect
 export async function connectWallet() {
-  const provider = getInjectedProvider();
-  if (!provider) throw new Error("No wallet found. Install MetaMask or similar.");
+  const providers = getInjectedProviders();
+  if (!providers.length) throw new Error("No wallet found. Install Rabby, MetaMask, or a compatible wallet.");
 
-  try {
-    await ensureChain(provider);
-  } catch (error) {
-    // Some wallets require account authorization before chain operations.
-    if (getErrorCode(error) === 4100) {
-      await provider.request({ method: "eth_requestAccounts" });
-      await ensureChain(provider);
-    } else {
-      throw error;
+  let lastError = null;
+
+  for (const provider of providers) {
+    try {
+      try {
+        await ensureChain(provider);
+      } catch (error) {
+        // Some wallets require account authorization before chain operations.
+        if (getErrorCode(error) === 4100) {
+          await provider.request({ method: "eth_requestAccounts" });
+          await ensureChain(provider);
+        } else {
+          throw error;
+        }
+      }
+
+      const accounts = await provider.request({ method: "eth_requestAccounts" });
+      if (!accounts?.length) throw new Error("Wallet returned no accounts.");
+
+      const wallet = createWalletClient({ chain, transport: custom(provider) });
+      const [account] = accounts;
+      return { wallet, account };
+    } catch (error) {
+      lastError = error;
     }
   }
 
-  const accounts = await provider.request({ method: "eth_requestAccounts" });
-  if (!accounts?.length) throw new Error("Wallet returned no accounts.");
-
-  const wallet = createWalletClient({ chain, transport: custom(provider) });
-  const [account] = accounts;
-  return { wallet, account };
+  throw lastError ?? new Error("Wallet connection failed.");
 }
 
 // ---------------------------------------------------------------- play
