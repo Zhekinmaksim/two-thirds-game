@@ -11,7 +11,7 @@ import {euint256, ebool, e} from "@inco/lightning/Lib.sol";
  *
  * HOW IT WORKS
  *  - Rounds run on a fixed schedule (default 1 hour).
- *  - To play you pay a fixed entry fee (e.g. 1 USDC) and submit your guess 0..100
+ *  - To play you pay a fixed entry fee (e.g. 1 USDC) and submit your guess 0..63
  *    ENCRYPTED. While the round is open nobody — not other players, not the RPC,
  *    not the contract owner — can read any guess. That is the whole point: on a
  *    transparent chain the last player could read everyone else and win for free.
@@ -46,10 +46,10 @@ contract TwoThirds {
     address public owner;
     bool    public paused;
 
-    uint16  public constant MAX_GUESS   = 100;
+    uint16  public constant MAX_GUESS   = 63;   // 64 cards, numbered 0..63
     uint16  public constant MAX_RAKE    = 1000; // 10%
     uint16  public constant MIN_PLAYERS = 2;    // below this, the pot rolls into the next round
-    uint16  public constant MAX_PLAYERS = 100;  // hard cap per round so settle() fits one tx
+    uint16  public constant MAX_PLAYERS = 50;   // matches the 8x8 board UI and keeps settle() bounded
 
     // ---- round state ----
     struct Round {
@@ -82,6 +82,7 @@ contract TwoThirds {
     event TreasuryQueued(uint256 indexed rid, uint256 amount);
     event PayoutWithdrawn(address indexed account, address indexed to, uint256 amount);
     event TreasuryWithdrawn(address indexed to, uint256 amount);
+    event RoundDecrypted(uint256 indexed rid, uint16[] numbers);
 
     constructor(
         IERC20 _token,
@@ -107,7 +108,7 @@ contract TwoThirds {
     // ----------------------------------------------------------------- play
 
     /**
-     * Join the current round with an encrypted guess (0..100).
+     * Join the current round with an encrypted guess (0..63).
      * @param ciphertext output of the Inco JS SDK encrypt() bound to (msg.sender, this contract).
      *
      * Pull-payment: caller must approve `entryFee` of `token` to this contract first.
@@ -217,6 +218,7 @@ contract TwoThirds {
         }
 
         emit Settled(rid, target, avgX1, netPot, pay, wCount);
+        emit RoundDecrypted(rid, guesses);
 
         // remainder from integer division seeds the next round's pot
         _startRound(dust);

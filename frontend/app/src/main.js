@@ -1,34 +1,99 @@
+const BOARD_SIZE = 64;
 const MAX_PLAYERS = 50;
-const RECENT_LIMIT = 16;
-const $ = (id) => document.getElementById(id);
-const ENV = import.meta.env ?? {};
-const APP_CONFIG = {
-  chainId: Number(ENV.VITE_CHAIN_ID ?? 8453),
-  game: ENV.VITE_GAME_ADDRESS ?? "",
-};
+const RECENT_LIMIT = 12;
+const REFRESH_MS = 12_000;
+const STORAGE_PENDING = "twothirds:pending";
+const STORAGE_LAST_RESULT = "twothirds:last-result";
 
-const usd = (value) => `$${(Number(value) / 1e6).toFixed(2)}`;
-const shortAddr = (value) => `${value.slice(0, 6)}…${value.slice(-4)}`;
-const shortTx = (value) => `${value.slice(0, 4)}…${value.slice(-4)}`;
-const formatRound = (rid) => `#${String(Number(rid)).padStart(3, "0")}`;
-const explorerBase = APP_CONFIG.chainId === 84532 ? "https://sepolia.basescan.org" : "https://basescan.org";
+const $ = (id) => document.getElementById(id);
 
 let integrationPromise = null;
 
-let wallet = null;
-let account = null;
-let guess = 33;
-let myRid = null;
-let currentRound = null;
-let refreshInFlight = false;
-let gameMeta = null;
-let shownResultRid = null;
-let resolvedPersonalResult = null;
-const myGuesses = new Map();
+const state = {
+  wallet: null,
+  account: null,
+  selectedNumber: null,
+  currentRound: null,
+  meta: null,
+  results: [],
+  activeResult: null,
+  pending: loadStoredJson(STORAGE_PENDING),
+  lastResultRef: loadStoredJson(STORAGE_LAST_RESULT),
+  refreshInFlight: false,
+  lastRefreshAt: 0,
+  connecting: false,
+  submitting: false,
+  statusMessage: "",
+};
+
+function loadStoredJson(key) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveStoredJson(key, value) {
+  try {
+    if (value === null) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore storage errors
+  }
+}
 
 async function loadIntegration() {
   if (!integrationPromise) integrationPromise = import("./inco.js");
   return integrationPromise;
+}
+
+function toNumber(value) {
+  return typeof value === "bigint" ? Number(value) : Number(value ?? 0);
+}
+
+function usd(value) {
+  return `$${(toNumber(value) / 1e6).toFixed(2)}`;
+}
+
+function shortAddr(value) {
+  return value ? `${value.slice(0, 6)}…${value.slice(-4)}` : "0x…";
+}
+
+function shortTx(value) {
+  return value ? `${value.slice(0, 6)}…${value.slice(-4)}` : "pending";
+}
+
+function formatRound(rid) {
+  return `#${String(toNumber(rid)).padStart(3, "0")}`;
+}
+
+function formatTimer(secondsLeft) {
+  if (secondsLeft <= 0) return "SETTLING";
+  const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const seconds = String(secondsLeft % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function currentSecondsLeft() {
+  if (!state.currentRound?.closesAt) return null;
+  return Math.max(0, state.currentRound.closesAt - Math.floor(Date.now() / 1000));
+}
+
+function isPendingRoundLive() {
+  return Boolean(
+    state.pending
+      && state.currentRound
+      && Number(state.pending.rid) === Number(state.currentRound.rid),
+  );
+}
+
+function getExplorerBase(config) {
+  return config.chainId === 84532 ? "https://sepolia.basescan.org" : "https://basescan.org";
 }
 
 function formatUiError(error, fallback) {
@@ -36,22 +101,36 @@ function formatUiError(error, fallback) {
   if (!raw) return fallback;
 
   const firstLine = raw.split("\n")[0].trim();
-  if (firstLine.startsWith("Address ") || firstLine.includes("hex value of 20 bytes")) {
-    return fallback;
-  }
-  if (firstLine.length > 180) return fallback;
+  if (!firstLine || firstLine.length > 180) return fallback;
   return `${fallback} ${firstLine}`;
 }
 
-function setGuess(value) {
-  guess = Math.max(0, Math.min(100, Math.round(Number(value))));
-  $("range").value = guess;
-  $("range").style.background = `linear-gradient(90deg,var(--accent) 0%,var(--accent) ${guess}%,#241a0c ${guess}%)`;
-  $("readout").textContent = guess;
+function setStatusMessage(message = "") {
+  state.statusMessage = message;
+  renderWalletHelp();
 }
 
-function setContractInfo() {
-  if (!APP_CONFIG.game) {
+function persistPending(pending) {
+  state.pending = pending;
+  saveStoredJson(STORAGE_PENDING, pending);
+}
+
+function persistLastResult(ref) {
+  state.lastResultRef = ref;
+  saveStoredJson(STORAGE_LAST_RESULT, ref);
+}
+
+function getPersonalPick() {
+  if (state.activeResult?.yourPick !== undefined) return state.activeResult.yourPick;
+  if (state.pending?.pick !== undefined) return state.pending.pick;
+  return state.selectedNumber;
+}
+
+function renderContractInfo(config) {
+  const explorerBase = getExplorerBase(config);
+  $("chainLabel").textContent = `${config.chainName} · ${config.chainId}`;
+
+  if (!config.game) {
     $("contractShort").textContent = "unavailable";
     $("contractLink").removeAttribute("href");
     $("contractLink").classList.add("is-disabled");
@@ -60,237 +139,340 @@ function setContractInfo() {
     return;
   }
 
-  $("contractShort").textContent = shortAddr(APP_CONFIG.game);
-  $("contractLink").href = `${explorerBase}/address/${APP_CONFIG.game}`;
+  $("contractShort").textContent = shortAddr(config.game);
+  $("contractLink").href = `${explorerBase}/address/${config.game}`;
   $("contractLink").classList.remove("is-disabled");
-  $("verifyOnchainLink").href = `${explorerBase}/address/${APP_CONFIG.game}`;
+  $("verifyOnchainLink").href = `${explorerBase}/address/${config.game}`;
   $("verifyOnchainLink").classList.remove("is-disabled");
 }
 
-function buildCard({ mine = false, empty = false } = {}) {
-  return `
-    <div class="tt-cardcell${empty ? " is-empty" : ""}">
-      <div class="tt-face">
-        <span class="tt-num"></span>
-        <span class="tt-sub"></span>
-      </div>
-      <div class="tt-cover">
-        <div class="tt-sheen"></div>
-        <span class="tt-cover-t">SCRATCH</span>
-        <span class="tt-cover-d">◆</span>
-      </div>
-      ${mine ? '<div class="tt-youring"><span>YOU</span></div>' : ""}
-    </div>
-  `;
+function renderVerifyLinks() {
+  const config = window.__ttConfig;
+  if (!config?.game) return;
+
+  const explorerBase = getExplorerBase(config);
+  const txHash = state.activeResult?.txHash ?? null;
+
+  if (txHash) {
+    $("lastTx").textContent = shortTx(txHash);
+    $("lastTxLink").href = `${explorerBase}/tx/${txHash}`;
+    $("lastTxLink").classList.remove("is-disabled");
+    $("verifyOnchainLink").href = `${explorerBase}/tx/${txHash}`;
+  } else {
+    $("lastTx").textContent = "waiting";
+    $("lastTxLink").removeAttribute("href");
+    $("lastTxLink").classList.add("is-disabled");
+    $("verifyOnchainLink").href = `${explorerBase}/address/${config.game}`;
+  }
 }
 
-function renderBoard() {
-  const count = Math.min(Number(currentRound?.playerCount ?? 0), MAX_PLAYERS);
-  const mineSeat = myRid && currentRound && Number(myRid) === Number(currentRound.rid) && count > 0 ? count - 1 : -1;
-  const cards = [];
-
-  for (let i = 0; i < count; i += 1) {
-    cards.push(buildCard({ mine: i === mineSeat }));
-  }
-  const board = $("board");
-  board.classList.toggle("is-empty", count === 0);
-  board.innerHTML = count
-    ? cards.join("")
-    : '<div class="tt-empty-field">Waiting for the first sealed entry in this round.</div>';
+function renderMeta() {
+  const entry = state.meta?.entryFee ?? 1_000_000n;
+  $("sEntry").textContent = usd(entry);
+  $("sealFee").textContent = `${usd(entry)} USDC`;
+  $("networkFee").textContent = "wallet approval + gas";
 }
 
 function renderStatus() {
-  if (!currentRound) {
+  if (!state.currentRound) {
     $("sRound").textContent = "#--";
-    $("sPot").textContent = "--";
-    $("sPlayers").textContent = `0/${MAX_PLAYERS}`;
+    $("sPot").textContent = "$0.00";
+    $("sPlayers").textContent = `0 / ${MAX_PLAYERS}`;
     $("sTimer").textContent = "--:--";
-    $("boardHd").textContent = "▸ SEALED ENTRIES — VALUES HIDDEN UNTIL SETTLE";
     return;
   }
 
-  const left = Math.max(0, currentRound.closesAt - Math.floor(Date.now() / 1000));
-  const mm = String(Math.floor(left / 60)).padStart(2, "0");
-  const ss = String(left % 60).padStart(2, "0");
-  const playerCount = Math.min(currentRound.playerCount, MAX_PLAYERS);
+  const players = toNumber(state.currentRound.playerCount);
+  $("sRound").textContent = formatRound(state.currentRound.rid);
+  $("sPot").textContent = usd(state.currentRound.pot);
+  $("sPlayers").textContent = `${players} / ${MAX_PLAYERS}`;
+  $("sTimer").textContent = formatTimer(currentSecondsLeft());
+}
 
-  $("sRound").textContent = formatRound(currentRound.rid);
-  $("sPot").textContent = usd(currentRound.pot);
-  $("sPlayers").textContent = `${playerCount}/${MAX_PLAYERS}`;
-  $("sTimer").textContent = left > 0 ? `${mm}:${ss}` : "SETTLING";
-
-  if (resolvedPersonalResult) {
-    $("boardHd").textContent = "▸ ROUND RESOLVED — VIEW THE LAST REVEAL BELOW";
-  } else if (myRid && Number(myRid) === Number(currentRound.rid)) {
-    $("boardHd").textContent = "▸ SEALED ENTRIES — WAITING TO SETTLE";
-  } else {
-    $("boardHd").textContent = "▸ SEALED ENTRIES — VALUES HIDDEN UNTIL SETTLE";
+function getResultSummary(result) {
+  const counts = new Array(BOARD_SIZE).fill(0);
+  const guesses = Array.isArray(result?.guesses) ? result.guesses : [];
+  for (const rawGuess of guesses) {
+    const guess = Number(rawGuess);
+    if (guess >= 0 && guess < BOARD_SIZE) counts[guess] += 1;
   }
+
+  const target = Number(result?.target ?? 0);
+  let minDistance = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < counts.length; index += 1) {
+    if (!counts[index]) continue;
+    const distance = Math.abs(index - target);
+    if (distance < minDistance) minDistance = distance;
+  }
+
+  const winNums = [];
+  const winSet = {};
+  let winnersPlayers = 0;
+
+  for (let index = 0; index < counts.length; index += 1) {
+    if (!counts[index]) continue;
+    if (Math.abs(index - target) === minDistance) {
+      winNums.push(index);
+      winSet[index] = true;
+      winnersPlayers += counts[index];
+    }
+  }
+
+  const yourPick = Number(result?.yourPick ?? -1);
+  const youWon = yourPick >= 0 && Boolean(winSet[yourPick]);
+  const off = yourPick >= 0 ? Math.abs(yourPick - target) : null;
+  const bins = new Array(32).fill(0);
+
+  for (let index = 0; index < counts.length; index += 1) {
+    if (!counts[index]) continue;
+    bins[Math.min(31, Math.floor(index / 2))] += counts[index];
+  }
+
+  return {
+    counts,
+    winNums,
+    winSet,
+    winnersPlayers,
+    youWon,
+    off,
+    bins,
+  };
 }
 
-function renderMeta(meta) {
-  gameMeta = meta;
-  $("entryFee").textContent = usd(meta.entryFee);
-  $("sealFee").textContent = `${usd(meta.entryFee)} USDC`;
-  $("sealCost").textContent = usd(meta.entryFee);
+function renderBoard() {
+  const board = $("board");
+  const reveal = Boolean(state.activeResult);
+  const personalPick = getPersonalPick();
+  const summary = reveal ? getResultSummary(state.activeResult) : null;
+
+  board.className = `tt-board${reveal ? " is-rev" : ""}`;
+  $("boardHd").textContent = reveal
+    ? "▸ ROUND DECRYPTED — WINNER PAID"
+    : isPendingRoundLive()
+      ? "▸ ENTRY LOCKED — WAITING FOR CLOSE"
+      : "▸ CHOOSE ONE OF 64 ENCRYPTED NUMBERS";
+
+  board.innerHTML = Array.from({ length: BOARD_SIZE }, (_, index) => {
+    const count = summary?.counts[index] ?? 0;
+    const mine = personalPick === index;
+    const win = Boolean(summary?.winSet[index]);
+
+    let cls = "avail";
+    let ring = "";
+    if (reveal) {
+      cls = `${mine ? " mine" : ""}${win ? " win" : ""}`.trim();
+    } else if (isPendingRoundLive() && mine) {
+      cls = "mine";
+      ring = '<span class="ringtag">YOU</span>';
+    } else if (state.selectedNumber === index) {
+      cls = "sel";
+      ring = '<span class="ringtag">PICK</span>';
+    }
+
+    const sparks = win
+      ? '<span class="spark-dot" style="top:18%;left:24%;width:4px;height:4px;background:#fff;box-shadow:0 0 6px rgba(255,224,150,.95)"></span>'
+        + '<span class="spark-dot" style="top:24%;left:72%;width:3px;height:3px;background:#ffd98a;box-shadow:0 0 6px rgba(255,224,150,.95)"></span>'
+        + '<span class="spark-dot" style="top:72%;left:20%;width:4px;height:4px;background:#fff;box-shadow:0 0 6px rgba(255,224,150,.95)"></span>'
+      : "";
+
+    return `<div class="tt-cardcell ${cls}" data-i="${index}">
+      <div class="face">
+        <span class="cnum2">${index}</span>
+        ${reveal && count > 0 ? `<span class="cnt">×${count}</span>` : ""}
+      </div>
+      ${win ? `<div class="winGlow"></div><div class="winBadge tt-px">WIN</div>${sparks}` : ""}
+      <div class="cover">
+        <div class="csheen"></div>
+        <span class="cnum">${index}</span>
+      </div>
+      ${ring}
+    </div>`;
+  }).join("");
 }
 
-function renderVerify(result) {
-  if (!result?.txHash) {
-    $("lastTx").textContent = "waiting for settle";
-    $("lastTxLink").removeAttribute("href");
-    $("lastTxLink").classList.add("is-disabled");
-    if (APP_CONFIG.game) $("verifyOnchainLink").href = `${explorerBase}/address/${APP_CONFIG.game}`;
+function renderWalletHelp() {
+  const pendingRound = isPendingRoundLive();
+
+  if (state.statusMessage) {
+    $("walletHelp").textContent = state.statusMessage;
     return;
   }
 
-  $("lastTx").textContent = shortTx(result.txHash);
-  $("lastTxLink").href = `${explorerBase}/tx/${result.txHash}`;
-  $("lastTxLink").classList.remove("is-disabled");
-  $("verifyOnchainLink").href = `${explorerBase}/tx/${result.txHash}`;
-}
+  if (pendingRound) return;
 
-function renderReveal(result) {
-  if (!result) {
-    $("reveal").hidden = true;
-    $("reveal").innerHTML = "";
+  if (state.account) {
+    $("walletHelp").textContent = `Wallet connected: ${shortAddr(state.account)}. Your number is encrypted in-browser before it is sent.`;
     return;
   }
 
-  const guesses = result.guesses ?? [];
-  const bins = new Array(20).fill(0);
-  for (const value of guesses) {
-    bins[Math.min(19, Math.floor(value / 5))] += 1;
+  $("walletHelp").textContent = "Public round data is visible without a wallet. Connect only when you want to sign a real encrypted entry.";
+}
+
+function renderControl() {
+  const pendingRound = isPendingRoundLive();
+  const reveal = Boolean(state.activeResult);
+
+  $("control").hidden = pendingRound || reveal;
+  $("waiting").hidden = !pendingRound || reveal;
+  $("after").hidden = !reveal;
+
+  if (!pendingRound && !reveal) {
+    $("readout").textContent = state.selectedNumber === null ? "—" : `#${state.selectedNumber}`;
+    $("readout").classList.toggle("empty", state.selectedNumber === null);
+    $("hint").textContent = state.selectedNumber === null
+      ? "tap any of the 64 cards →"
+      : `selected card #${state.selectedNumber} · repeated picks are allowed`;
+
+    const button = $("btnSign");
+    const roundIsFull = toNumber(state.currentRound?.playerCount ?? 0) >= MAX_PLAYERS;
+
+    if (state.connecting) {
+      button.disabled = true;
+      button.textContent = "▸ CONNECTING...";
+    } else if (state.submitting) {
+      button.disabled = true;
+      button.textContent = "▸ SIGNING...";
+    } else if (state.selectedNumber === null) {
+      button.disabled = true;
+      button.textContent = "▸ PICK A NUMBER FIRST";
+    } else if (roundIsFull) {
+      button.disabled = true;
+      button.textContent = "▸ ROUND FULL";
+    } else if (!state.account) {
+      button.disabled = false;
+      button.textContent = "▸ CONNECT WALLET & ENTER ($1)";
+    } else {
+      button.disabled = false;
+      button.textContent = "▸ SIGN TX & ENTER ($1)";
+    }
   }
 
-  const max = Math.max(1, ...bins);
-  const targetBin = Math.min(19, Math.floor(Number(result.target) / 5));
-  const myGuess = myGuesses.get(Number(result.rid));
-  const myBin = typeof myGuess === "number" ? Math.min(19, Math.floor(myGuess / 5)) : -1;
-  const hist = bins.map((count, index) => {
-    const height = Math.max(8, (count / max) * 88);
-    const cls = index === targetBin ? "tgt" : index === myBin ? "you" : "";
-    return `<i class="${cls}" style="height:${height.toFixed(0)}%"></i>`;
+  if (pendingRound) {
+    $("waitCard").textContent = `#${state.pending.pick}`;
+    $("pendingTx").textContent = shortTx(state.pending.txHash);
+  }
+
+  if (reveal) renderResultPanel();
+  renderWalletHelp();
+}
+
+function renderResultPanel() {
+  const result = state.activeResult;
+  const summary = getResultSummary(result);
+  const yourPick = Number(result.yourPick);
+  const avgDisplay = Number(result.avg).toFixed(1);
+  const histMax = Math.max(1, ...summary.bins);
+  const targetBin = Math.min(31, Math.floor(Number(result.target) / 2));
+  const yourBin = yourPick >= 0 ? Math.min(31, Math.floor(yourPick / 2)) : -1;
+
+  const hist = summary.bins.map((count, index) => {
+    const height = Math.max(5, (count / histMax) * 94);
+    let style = "background:color-mix(in oklab,var(--accent),#050302 42%);";
+    if (index === targetBin) style = "background:var(--red);box-shadow:0 0 8px rgba(255,59,92,.5);";
+    if (index === yourBin) style = "background:var(--cyan);box-shadow:0 0 8px rgba(54,245,255,.4);";
+    return `<i style="height:${height.toFixed(0)}%;${style}"></i>`;
   }).join("");
 
-  const isPersonal = myRid && Number(myRid) === Number(result.rid);
-  const youWon = isPersonal && account && (result.winnerAddresses ?? []).some((winner) => winner.toLowerCase() === account.toLowerCase());
-  const youOff = typeof myGuess === "number" ? Math.abs(myGuess - Number(result.target)) : null;
+  const verdict = summary.youWon
+    ? summary.winnersPlayers > 1
+      ? "YOU SPLIT THE POT"
+      : "YOU WIN"
+    : `NO WIN · OFF BY ${summary.off ?? "—"}`;
+  const verdictColor = summary.youWon ? "var(--green)" : "var(--red)";
+  const verdictGlow = summary.youWon ? "rgba(69,230,69,.5)" : "rgba(255,59,92,.4)";
+  const shareBig = summary.youWon ? `I WON ${usd(result.payPerWinner)}` : `OFF BY ${summary.off ?? "—"}`;
+  const shareText = summary.youWon
+    ? `I won ${usd(result.payPerWinner)} on TWO·THIRDS. My encrypted card #${yourPick} landed closest to ${result.target}.`
+    : `I played encrypted card #${yourPick} on TWO·THIRDS. Target landed on ${result.target}.`;
+  const winLabel = summary.winNums.length
+    ? `#${summary.winNums[0]}${summary.winNums.length > 1 ? ` +${summary.winNums.length - 1}` : ""}`
+    : "—";
 
-  let verdict = `AUTO-PAID BY CONTRACT — ${usd(result.payPerWinner)}`;
-  let verdictColor = "var(--green)";
-  let verdictGlow = "rgba(69,230,69,.45)";
-  let shareBig = `LAST PAYOUT ${usd(result.payPerWinner)}`;
-  let shareClass = "tt-share-card";
-  let shareButtonClass = "tt-btn share";
-  let shareText = `Round ${formatRound(result.rid)} settled on TWO·THIRDS. Target ${result.target}, average ${result.avg}, payout ${usd(result.payPerWinner)} per winner.`;
-
-  if (isPersonal && youWon) {
-    verdict = `★ YOU WIN — ${usd(result.payPerWinner)}`;
-    shareBig = `I WON ${usd(result.payPerWinner)}`;
-    shareText = `I won ${usd(result.payPerWinner)} on TWO·THIRDS — guessed ${myGuess}, target was ${result.target}. Sealed on Inco and paid automatically by the contract.`;
-  } else if (isPersonal && youOff !== null) {
-    verdict = `YOU GUESSED ${myGuess} · OFF BY ${youOff}`;
-    verdictColor = "var(--red)";
-    verdictGlow = "rgba(255,59,92,.4)";
-    shareBig = `OFF BY ${youOff}`;
-    shareClass = "tt-share-card loss";
-    shareButtonClass = "tt-btn share loss";
-    shareText = `I guessed ${myGuess} on TWO·THIRDS — target landed on ${result.target}. Sealed on Inco and settled automatically by the contract.`;
-  }
-
-  $("reveal").hidden = false;
-  $("reveal").innerHTML = `
-    <div class="tt-reveal-hd tt-px">▸ DECRYPTED FIELD</div>
-    <div class="tt-hist">${hist || '<i style="height:8%"></i>'}</div>
-    <div class="tt-axis"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-    <div class="tt-target-wrap"><small>⅔ × AVG ${result.avg} = </small><div class="tt-target tt-px">${result.target}</div></div>
-    <div class="tt-resline"><span class="k">AVERAGE</span> ${result.avg} &nbsp;|&nbsp; <span class="k">WINNERS</span> ${(result.winnerAddresses ?? []).length || result.winners}</div>
-    <div class="tt-verdict tt-px" style="color:${verdictColor};text-shadow:0 0 10px ${verdictGlow}">${verdict}</div>
-    <div class="tt-resline"><span class="k">NET POT</span> ${usd(result.netPot)} · <span class="k">PAY/WIN</span> <span class="pay">${usd(result.payPerWinner)}</span></div>
-    <div class="${shareClass}">
-      <span class="tt-share-dom">twothird.fun</span>
-      <div class="tt-share-logo">TWO<span style="color:var(--red)">·</span>THIRDS</div>
-      <div class="tt-share-big" style="color:${verdictColor};text-shadow:0 0 14px ${verdictGlow}">${shareBig}</div>
-      <div class="tt-share-sub">target ${result.target} · avg ${result.avg} · round ${formatRound(result.rid)}</div>
-      <div class="tt-share-seal">✓ sealed via confidential compute · auto-paid by contract</div>
+  $("after").innerHTML = `
+    <div class="tt-verdict tt-px" style="color:${verdictColor};text-shadow:0 0 8px ${verdictGlow}">${verdict}</div>
+    <div class="tt-twocard">
+      <div class="c" style="border:1px solid color-mix(in oklab,var(--green),#050302 55%);background:rgba(69,230,69,.06)">
+        <div class="lbl">WINNING CARD</div>
+        <div class="v" style="color:var(--green);text-shadow:0 0 9px rgba(69,230,69,.55)">${winLabel}</div>
+      </div>
+      <div class="c" style="border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);background:rgba(54,245,255,.06)">
+        <div class="lbl">YOUR CARD</div>
+        <div class="v" style="color:var(--cyan);text-shadow:0 0 9px rgba(54,245,255,.5)">#${yourPick}</div>
+      </div>
     </div>
-    <button class="${shareButtonClass}" id="btnShare" type="button">▸ SHARE TO 𝕏</button>
+    <div class="tt-target">
+      <small>⅔ × AVG ${avgDisplay} =</small>
+      <div class="v">${result.target}</div>
+    </div>
+    <div class="tt-hist">${hist}</div>
+    <div class="tt-axis"><span>0</span><span>where players landed</span><span>63</span></div>
+    <div class="tt-pot">
+      <span class="k">POT</span> ${usd(result.grossPot ?? result.netPot)}
+      · <span class="k">RAKE</span> ${usd(result.rake ?? 0n)}
+      · <span class="k">PAY/WIN</span> <span class="pay">${usd(result.payPerWinner)}</span>
+      · ${summary.winnersPlayers} ${summary.winnersPlayers === 1 ? "winner" : "winners"}
+    </div>
+    <div class="tt-share" style="border:1px solid ${summary.youWon ? "color-mix(in oklab,var(--green),#050302 50%)" : "color-mix(in oklab,var(--red),#050302 50%)"};background:${summary.youWon ? "linear-gradient(135deg,#0c1308,#0a0705)" : "linear-gradient(135deg,#150a0c,#0a0705)"}">
+      <span class="dom">twothird.fun</span>
+      <div class="logo">TWO<span style="color:var(--red)">·</span>THIRDS</div>
+      <div class="big" style="color:${verdictColor};text-shadow:0 0 14px ${verdictGlow}">${shareBig}</div>
+      <div class="sub">card #${yourPick} · target ${result.target} · round ${formatRound(result.rid)}</div>
+      <div class="seal">encrypted by Inco · settled automatically by contract</div>
+    </div>
+    <button class="tt-btn" id="btnShare" type="button">▸ SHARE TO 𝕏</button>
+    <button class="tt-btn sec" id="btnNext" type="button">▸ BACK TO LIVE ROUND</button>
   `;
 
-  $("btnShare").addEventListener("click", () => {
-    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent("https://x.com/twothirdsfun")}`;
-    window.open(intent, "_blank", "noopener");
-  });
+  $("btnShare").onclick = () => {
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent("https://x.com/twothirdsfun")}`;
+    window.open(url, "_blank", "noopener");
+  };
+
+  $("btnNext").onclick = () => {
+    state.activeResult = null;
+    persistLastResult(null);
+    renderBoard();
+    renderControl();
+    renderVerifyLinks();
+  };
 }
 
-function renderHistory(results) {
-  const source = results.length
-    ? results
-    : [
-        { target: 18 },
-        { target: 24 },
-        { target: 37 },
-        { target: 31 },
-        { target: 42 },
-        { target: 50 },
-      ];
+function renderLeaderboard() {
+  const entryFee = state.meta?.entryFee ?? 1_000_000n;
+  const stats = new Map();
 
-  const spark = source.slice(0, 12).reverse().map((row, index, list) => {
-    const height = 8 + (Number(row.target) / 100) * 42;
-    const cls = index === list.length - 1 ? "last" : "";
-    return `<i class="${cls}" style="height:${height.toFixed(0)}px"></i>`;
-  }).join("");
-  $("spark").innerHTML = spark;
-
-  if (!results.length) {
-    $("history").innerHTML = '<tr><td colspan="4" class="tt-empty">no rounds settled yet — play one ▸</td></tr>';
-    return;
-  }
-
-  $("history").innerHTML = results.slice(0, 7).map((row) => {
-    let winner = "auto-paid split";
-    if ((row.winnerAddresses ?? []).length === 1) {
-      winner = shortAddr(row.winnerAddresses[0]);
-    } else if ((row.winnerAddresses ?? []).length > 1) {
-      winner = `${row.winnerAddresses.length}-way split`;
+  for (const result of state.results) {
+    for (const player of result.players ?? []) {
+      const key = player.toLowerCase();
+      const row = stats.get(key) ?? {
+        address: player,
+        games: 0,
+        wins: 0,
+        net: 0n,
+      };
+      row.games += 1;
+      row.net -= BigInt(entryFee);
+      stats.set(key, row);
     }
 
-    return `<tr>
-      <td>${formatRound(row.rid)}</td>
-      <td class="num">${row.target}</td>
-      <td class="num">${row.avg}</td>
-      <td>${winner}</td>
-    </tr>`;
-  }).join("");
-}
-
-function renderSparkPlaceholder() {
-  const placeholder = [18, 24, 37, 31, 42, 50];
-  $("spark").innerHTML = placeholder.map((value, index, list) => {
-    const height = 8 + (value / 100) * 42;
-    const cls = index === list.length - 1 ? "last" : "";
-    return `<i class="${cls}" style="height:${height.toFixed(0)}px"></i>`;
-  }).join("");
-}
-
-function renderLeaderboard(results) {
-  const winners = new Map();
-
-  for (const row of results) {
-    for (const winner of row.winnerAddresses ?? []) {
-      const current = winners.get(winner) ?? { address: winner, wins: 0, net: 0n, lastPaid: 0n };
-      current.wins += 1;
-      current.net += BigInt(row.payPerWinner);
-      current.lastPaid = BigInt(row.payPerWinner);
-      winners.set(winner, current);
+    for (const winner of result.winnerAddresses ?? []) {
+      const key = winner.toLowerCase();
+      const row = stats.get(key) ?? {
+        address: winner,
+        games: 0,
+        wins: 0,
+        net: 0n,
+      };
+      row.wins += 1;
+      row.net += BigInt(result.payPerWinner);
+      stats.set(key, row);
     }
   }
 
-  const rows = [...winners.values()]
-    .sort((a, b) => {
-      if (a.net === b.net) return b.wins - a.wins;
-      return a.net > b.net ? -1 : 1;
+  const rows = [...stats.values()]
+    .sort((left, right) => {
+      if (left.net === right.net) return right.wins - left.wins;
+      return left.net > right.net ? -1 : 1;
     })
     .slice(0, 8);
 
@@ -301,36 +483,39 @@ function renderLeaderboard(results) {
     return;
   }
 
-  let myRank = null;
-  let myNet = null;
+  let youRank = "#—";
+  let youNet = "+$0.00";
 
   $("lb").innerHTML = rows.map((row, index) => {
-    const isMe = account && row.address.toLowerCase() === account.toLowerCase();
-    if (isMe) {
-      myRank = index + 1;
-      myNet = row.net;
+    const isYou = Boolean(state.account) && row.address.toLowerCase() === state.account.toLowerCase();
+    const winPct = row.games ? Math.round((row.wins / row.games) * 100) : 0;
+    const netText = `${row.net >= 0n ? "+" : "-"}${usd(row.net >= 0n ? row.net : -row.net)}`;
+
+    if (isYou) {
+      youRank = `#${index + 1}`;
+      youNet = netText;
     }
 
-    return `<tr class="${isMe ? "me" : ""}">
+    return `<tr class="${isYou ? "me" : ""}">
       <td>${index === 0 ? "★" : "▸"} #${index + 1}</td>
-      <td style="color:${isMe ? "var(--cyan)" : "var(--accent)"}">${shortAddr(row.address)}</td>
-      <td class="num">${row.wins}</td>
-      <td class="num">${usd(row.lastPaid)}</td>
-      <td class="num" style="color:var(--green)">${usd(row.net)}</td>
+      <td style="color:${isYou ? "var(--cyan)" : "var(--accent)"}">${shortAddr(row.address)}</td>
+      <td class="num">${row.games}</td>
+      <td class="num">${winPct}%</td>
+      <td class="num" style="color:${row.net >= 0n ? "var(--green)" : "var(--red)"}">${netText}</td>
     </tr>`;
   }).join("");
 
-  $("youRank").textContent = myRank ? `#${myRank}` : "#—";
-  $("youNet").textContent = myNet !== null ? `+${usd(myNet)}` : "+$0.00";
+  $("youRank").textContent = youRank;
+  $("youNet").textContent = youNet;
 }
 
-function renderFeed(results) {
-  if (!results.length) {
-    $("feed").innerHTML = '<span>Waiting for the first settled round...</span><span>Waiting for the first settled round...</span>';
+function renderFeed() {
+  if (!state.results.length) {
+    $("feed").innerHTML = "<span>Waiting for the first settled round...</span><span>Waiting for the first settled round...</span>";
     return;
   }
 
-  const items = results.slice(0, 8).map((row) => {
+  const items = state.results.slice(0, 8).map((row) => {
     if ((row.winnerAddresses ?? []).length === 1) {
       return `${shortAddr(row.winnerAddresses[0])} won ${usd(row.payPerWinner)} in ${formatRound(row.rid)}`;
     }
@@ -343,184 +528,166 @@ function renderFeed(results) {
   $("feed").innerHTML = items.concat(items).map((item) => `<span>${item}</span>`).join("");
 }
 
-function renderPhase() {
-  const hasPendingMyRound = myRid && currentRound && Number(myRid) === Number(currentRound.rid);
-  $("control").hidden = Boolean(hasPendingMyRound || resolvedPersonalResult);
-  $("waiting").hidden = !hasPendingMyRound || Boolean(resolvedPersonalResult);
-  $("after").hidden = !resolvedPersonalResult;
-}
-
-function updateActionCopy() {
-  if (resolvedPersonalResult) {
-    $("btnNext").textContent = "▸ VIEW LIVE ROUND";
-    return;
+async function syncResultState(integration) {
+  if (state.pending?.rid !== undefined) {
+    const pendingResult = await integration.getRoundResult(state.pending.rid);
+    if (pendingResult) {
+      state.activeResult = {
+        ...pendingResult,
+        yourPick: state.pending.pick,
+      };
+      persistLastResult({ rid: pendingResult.rid, pick: state.pending.pick });
+      persistPending(null);
+      return;
+    }
   }
 
-  if (!wallet) {
-    $("btnSeal").disabled = false;
-    $("btnSeal").textContent = "▸ CONNECT WALLET";
-    return;
+  if (state.lastResultRef?.rid !== undefined) {
+    const recentResult = await integration.getRoundResult(state.lastResultRef.rid);
+    if (recentResult) {
+      state.activeResult = {
+        ...recentResult,
+        yourPick: state.lastResultRef.pick,
+      };
+      return;
+    }
   }
 
-  if (myRid && currentRound && Number(myRid) === Number(currentRound.rid)) {
-    return;
-  }
-
-  if (currentRound && currentRound.playerCount >= MAX_PLAYERS) {
-    $("btnSeal").disabled = true;
-    $("btnSeal").textContent = "▸ ROUND FULL";
-    return;
-  }
-
-  $("btnSeal").disabled = false;
-  $("btnSeal").textContent = "▸ INSERT GUESS & SEAL";
+  state.activeResult = null;
 }
 
 async function refresh() {
-  if (refreshInFlight) return;
-  refreshInFlight = true;
+  if (state.refreshInFlight) return;
+  state.refreshInFlight = true;
 
   try {
-    const { getCurrentRound, getRecentResults, getRoundResult } = await loadIntegration();
-    const round = await getCurrentRound();
+    const integration = await loadIntegration();
+    window.__ttConfig = integration.CONFIG;
 
-    currentRound = round;
-    renderBoard();
+    const [round, recent, meta] = await Promise.all([
+      integration.getCurrentRound(),
+      integration.getRecentResults(RECENT_LIMIT).catch(() => []),
+      state.meta ? Promise.resolve(state.meta) : integration.getGameMeta().catch(() => null),
+    ]);
+
+    if (meta) state.meta = meta;
+    state.currentRound = round;
+    state.results = recent;
+    renderContractInfo(integration.CONFIG);
+    await syncResultState(integration);
+    renderMeta();
     renderStatus();
-    renderPhase();
-    updateActionCopy();
-
-    let recent = [];
-    try {
-      recent = await getRecentResults(RECENT_LIMIT);
-    } catch {
-      recent = [];
-    }
-
-    renderHistory(recent);
-    renderLeaderboard(recent);
-    renderFeed(recent);
-
-    const targetResultRid = myRid ?? recent[0]?.rid ?? null;
-    let activeResult = null;
-
-    if (targetResultRid) {
-      try {
-        activeResult = await getRoundResult(BigInt(targetResultRid));
-      } catch {
-        activeResult = null;
-      }
-    }
-
-    if (activeResult) {
-      shownResultRid = targetResultRid;
-      renderVerify(activeResult);
-      renderReveal(activeResult);
-
-      if (myRid && Number(myRid) === Number(activeResult.rid) && Number(currentRound.rid) !== Number(myRid)) {
-        resolvedPersonalResult = activeResult;
-        myRid = null;
-      }
-    } else if (shownResultRid === null) {
-      renderVerify(null);
-      renderReveal(null);
-    }
-
-    $("walletHelp").textContent = wallet
-      ? `Wallet connected: ${shortAddr(account)}. Your guess will be encrypted in-browser before submission.`
-      : "Public data is visible without a wallet. Connect only when you want to seal a real onchain guess.";
+    renderBoard();
+    renderControl();
+    renderLeaderboard();
+    renderFeed();
+    renderVerifyLinks();
+    if (!state.account) setStatusMessage("");
   } catch (error) {
-    $("walletHelp").textContent = formatUiError(
-      error,
-      "Live data is temporarily unavailable. Retrying automatically.",
-    );
+    setStatusMessage(formatUiError(error, "Live data is temporarily unavailable. Retrying automatically."));
+    renderStatus();
+    renderBoard();
+    renderControl();
+    renderLeaderboard();
+    renderFeed();
   } finally {
-    refreshInFlight = false;
+    state.lastRefreshAt = Date.now();
+    state.refreshInFlight = false;
   }
 }
 
-$("verifyBtn").addEventListener("click", (event) => {
-  const panel = $("verifyPanel");
-  const open = panel.hidden;
-  panel.hidden = !open;
-  event.currentTarget.textContent = open ? "HIDE ↗" : "HOW IT WORKS ↗";
-});
+async function handleConnectAndEnter() {
+  if (state.selectedNumber === null || state.submitting || state.connecting) return;
 
-const onGuessInput = (event) => setGuess(event.target.value);
-$("range").addEventListener("input", onGuessInput);
-$("range").addEventListener("change", onGuessInput);
-$("range").addEventListener("touchmove", onGuessInput, { passive: true });
-$("range").addEventListener("pointermove", (event) => {
-  if (event.buttons !== 1) return;
-  setGuess(event.target.value);
-});
-
-$("control").addEventListener("click", (event) => {
-  const chip = event.target.closest(".tt-chip");
-  if (!chip) return;
-  setGuess(chip.dataset.v);
-});
-
-$("btnSeal").addEventListener("click", async () => {
   try {
-    if (!wallet) {
-      const { connectWallet } = await loadIntegration();
-      $("btnSeal").disabled = true;
-      $("btnSeal").textContent = "▸ CONNECTING...";
-      ({ wallet, account } = await connectWallet());
-      $("walletHelp").textContent = `Wallet connected: ${shortAddr(account)}. Your guess will be encrypted in-browser before submission.`;
-      updateActionCopy();
+    const integration = await loadIntegration();
+    if (!state.account) {
+      state.connecting = true;
+      renderControl();
+      const { wallet, account } = await integration.connectWallet();
+      state.wallet = wallet;
+      state.account = account;
+      state.connecting = false;
+      setStatusMessage("");
+      renderControl();
+      renderLeaderboard();
     }
 
-    if (myRid && currentRound && Number(myRid) === Number(currentRound.rid)) return;
+    state.submitting = true;
+    renderControl();
 
-    $("btnSeal").disabled = true;
-    $("btnSeal").textContent = "▸ SEALING...";
-    const { getCurrentRound, playRound } = await loadIntegration();
-    const { rid } = await getCurrentRound();
-    await playRound(wallet, account, guess);
-    myRid = Number(rid);
-    myGuesses.set(Number(rid), guess);
-    resolvedPersonalResult = null;
-    $("walletHelp").textContent = "Guess sealed successfully. Nobody can read the plaintext value until settlement.";
+    const round = await integration.getCurrentRound();
+    const txHash = await integration.playRound(state.wallet, state.account, state.selectedNumber);
+
+    persistLastResult(null);
+    persistPending({
+      rid: Number(round.rid),
+      pick: state.selectedNumber,
+      txHash,
+    });
+    state.activeResult = null;
+    setStatusMessage("Encrypted entry submitted. The round will settle automatically after close.");
     await refresh();
   } catch (error) {
-    $("walletHelp").textContent = `Action failed: ${error.shortMessage || error.message}`;
-    updateActionCopy();
+    setStatusMessage(`Action failed: ${error?.shortMessage || error?.message || "wallet request failed"}`);
+  } finally {
+    state.connecting = false;
+    state.submitting = false;
+    renderControl();
   }
-});
-
-$("btnNext").addEventListener("click", () => {
-  resolvedPersonalResult = null;
-  renderPhase();
-  updateActionCopy();
-});
-
-async function init() {
-  setContractInfo();
-  setGuess(33);
-  renderBoard();
-  renderSparkPlaceholder();
-  renderStatus();
-  renderPhase();
-  updateActionCopy();
-
-  try {
-    const { getGameMeta } = await loadIntegration();
-    renderMeta(await getGameMeta());
-  } catch {
-    $("entryFee").textContent = "$1.00";
-    $("sealFee").textContent = "$1.00 USDC";
-    $("sealCost").textContent = "$1.00";
-  }
-
-  renderVerify(null);
-  await refresh();
-  setInterval(() => {
-    renderStatus();
-    updateActionCopy();
-  }, 1000);
-  setInterval(refresh, 5000);
 }
 
-init();
+function bindEvents() {
+  $("verifyBtn").addEventListener("click", () => {
+    const panel = $("verifyPanel");
+    const open = panel.hidden;
+    panel.hidden = !open;
+    $("verifyBtn").textContent = open ? "HIDE ↗" : "HOW IT WORKS ↗";
+  });
+
+  $("board").addEventListener("click", (event) => {
+    if (state.activeResult || isPendingRoundLive()) return;
+    const card = event.target.closest(".tt-cardcell");
+    if (!card) return;
+    state.selectedNumber = Number(card.dataset.i);
+    renderBoard();
+    renderControl();
+  });
+
+  $("btnSign").addEventListener("click", handleConnectAndEnter);
+}
+
+function startLoops() {
+  window.setInterval(() => {
+    renderStatus();
+    const secondsLeft = currentSecondsLeft();
+    if (secondsLeft === null) return;
+    if (secondsLeft === 0 && Date.now() - state.lastRefreshAt > 4_000) refresh();
+  }, 1_000);
+
+  window.setInterval(() => {
+    refresh();
+  }, REFRESH_MS);
+}
+
+async function init() {
+  bindEvents();
+
+  const integration = await loadIntegration();
+  window.__ttConfig = integration.CONFIG;
+  renderContractInfo(integration.CONFIG);
+  renderMeta();
+  renderStatus();
+  renderBoard();
+  renderControl();
+  renderLeaderboard();
+  renderFeed();
+  renderVerifyLinks();
+  await refresh();
+  startLoops();
+}
+
+init().catch((error) => {
+  setStatusMessage(formatUiError(error, "Initialization failed."));
+  renderControl();
+});

@@ -1,43 +1,79 @@
-// inco.js - browser-side integration for the TwoThirds game.
-//
-// Safety model:
-//  - private key never touched; the wallet signs everything.
-//  - account requested only on user action; chain checked/switched before any tx.
-//  - the guess is encrypted IN THE BROWSER (Inco SDK); plaintext never leaves the page.
-//  - exact entry fee approved, never unlimited.
-
 import {
-  createWalletClient, createPublicClient, custom, fallback, http,
-  decodeFunctionData, defineChain, getAddress, getContract, parseAbi,
+  createPublicClient,
+  createWalletClient,
+  custom,
+  decodeFunctionData,
+  defineChain,
+  fallback,
+  getAddress,
+  getContract,
+  http,
+  parseAbi,
 } from "viem";
 import * as IncoLite from "@inco/js/lite";
 import { handleTypes } from "@inco/js";
 
-// ---------------------------------------------------------------- CONFIG
-function requireEnv(name, fallback = "") {
-  const value = import.meta.env[name] ?? fallback;
-  if (value === "") throw new Error(`Missing required env ${name}`);
-  return value;
+const DEFAULTS = {
+  pepper: "mainnet",
+  chainId: 8453,
+  chainName: "Base",
+  rpcUrl: "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
+  game: "0x7E7B4863cb8bE69Ec9E4AAf2941B9289fEE9C524",
+  token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+};
+
+const ENV = import.meta.env ?? {};
+
+function readEnv(name, fallback) {
+  const value = ENV[name];
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeAddress(value, fallback = "") {
+  for (const candidate of [value, fallback]) {
+    if (!candidate) continue;
+    try {
+      return getAddress(candidate);
+    } catch {
+      // ignore invalid candidate and continue
+    }
+  }
+  return null;
+}
+
+function clampPick(value) {
+  const num = Number(value);
+  return Math.max(0, Math.min(63, Math.round(num)));
+}
+
+function toBigInt(value) {
+  return typeof value === "bigint" ? value : BigInt(value);
 }
 
 export const CONFIG = {
-  pepper: requireEnv("VITE_INCO_PEPPER", "testnet"),
-  chainId: Number(requireEnv("VITE_CHAIN_ID")),
-  chainName: requireEnv("VITE_CHAIN_NAME"),
-  rpcUrl: requireEnv("VITE_RPC_URL"),
-  game: getAddress(requireEnv("VITE_GAME_ADDRESS")),
-  token: getAddress(requireEnv("VITE_TOKEN_ADDRESS")),
+  pepper: readEnv("VITE_INCO_PEPPER", DEFAULTS.pepper),
+  chainId: Number(readEnv("VITE_CHAIN_ID", String(DEFAULTS.chainId))),
+  chainName: readEnv("VITE_CHAIN_NAME", DEFAULTS.chainName),
+  rpcUrl: readEnv("VITE_RPC_URL", DEFAULTS.rpcUrl),
+  game: normalizeAddress(readEnv("VITE_GAME_ADDRESS", DEFAULTS.game), DEFAULTS.game),
+  token: normalizeAddress(readEnv("VITE_TOKEN_ADDRESS", DEFAULTS.token), DEFAULTS.token),
 };
 
 const RPC_FALLBACKS = {
   8453: [
-    "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
+    "https://mainnet.base.org",
+    "https://base-rpc.publicnode.com",
+    DEFAULTS.rpcUrl,
   ],
 };
 
 const rpcUrls = [...new Set([CONFIG.rpcUrl, ...(RPC_FALLBACKS[CONFIG.chainId] ?? [])])];
 const LOG_BLOCK_SPAN = 5_000n;
 const MAX_LOG_LOOKBACK_BLOCKS = 100_000n;
+const resultCache = new Map();
+let latestSettledBlock = null;
+let inco = null;
+let gameMetaPromise = null;
 
 const GAME_ABI = parseAbi([
   "function enter(bytes ciphertext)",
@@ -49,7 +85,9 @@ const GAME_ABI = parseAbi([
   "function getPlayers(uint256 rid) view returns (address[])",
   "function settle(uint256[] values, bytes[][] signatures)",
   "event Settled(uint256 indexed rid, uint16 target, uint16 avgX1, uint256 netPot, uint256 payPerWinner, uint256 winners)",
+  "event RoundDecrypted(uint256 indexed rid, uint16[] numbers)",
 ]);
+
 const ERC20_ABI = parseAbi([
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
@@ -67,116 +105,151 @@ export const publicClient = createPublicClient({
   transport: fallback(rpcUrls.map((url) => http(url, { retryCount: 1, timeout: 8_000 }))),
 });
 
-let _inco = null;
-const resultCache = new Map();
-let _latestSettledBlock = null;
+function requireGameAddress() {
+  if (!CONFIG.game) throw new Error("Game contract address is not configured.");
+}
+
+function requireTokenAddress() {
+  if (!CONFIG.token) throw new Error("Payment token address is not configured.");
+}
 
 async function getInco() {
-  if (_inco) return _inco;
-  _inco = await IncoLite.Lightning.latest(CONFIG.pepper, CONFIG.chainId);
-  return _inco;
+  if (inco) return inco;
+  inco = await IncoLite.Lightning.latest(CONFIG.pepper, CONFIG.chainId);
+  return inco;
 }
 
-function clampGuess(value) {
-  const num = Number(value);
-  return Math.max(0, Math.min(100, Math.round(num)));
-}
-
-async function hydrateSettledLog(log) {
-  const cacheKey = `${log.transactionHash}:${log.args.rid}`;
-  if (resultCache.has(cacheKey)) return resultCache.get(cacheKey);
-
-  const base = {
-    rid: Number(log.args.rid),
-    target: Number(log.args.target),
-    avg: Number(log.args.avgX1),
-    netPot: log.args.netPot,
-    payPerWinner: log.args.payPerWinner,
-    winners: Number(log.args.winners),
-    winnerAddresses: [],
-    guesses: [],
-    txHash: log.transactionHash,
-  };
-
-  try {
-    const [tx, players] = await Promise.all([
-      publicClient.getTransaction({ hash: log.transactionHash }),
-      publicClient.readContract({
-        address: CONFIG.game,
-        abi: GAME_ABI,
-        functionName: "getPlayers",
-        args: [log.args.rid],
-      }),
-    ]);
-
-    const decoded = decodeFunctionData({ abi: GAME_ABI, data: tx.input });
-    if (decoded.functionName === "settle") {
-      const [values] = decoded.args;
-      const guesses = values.map(clampGuess);
-      base.guesses = guesses;
-      const target = Number(log.args.target);
-      let minDistance = Number.POSITIVE_INFINITY;
-
-      for (const guess of guesses) {
-        const distance = Math.abs(guess - target);
-        if (distance < minDistance) minDistance = distance;
-      }
-
-      base.winnerAddresses = players.filter((_, index) =>
-        Math.abs((guesses[index] ?? 0) - target) === minDistance);
-    }
-  } catch {
-    // keep base result if calldata or players are unavailable
-  }
-
-  resultCache.set(cacheKey, base);
-  if (typeof log.blockNumber === "bigint") {
-    _latestSettledBlock = _latestSettledBlock === null || log.blockNumber > _latestSettledBlock
-      ? log.blockNumber
-      : _latestSettledBlock;
-  }
-  return base;
-}
-
-async function getSettledLogsChunk(fromBlock, toBlock, rid) {
-  return publicClient.getContractEvents({
+async function getPlayersForRound(rid) {
+  requireGameAddress();
+  return publicClient.readContract({
     address: CONFIG.game,
     abi: GAME_ABI,
-    eventName: "Settled",
-    ...(typeof rid === "bigint" ? { args: { rid } } : {}),
-    fromBlock,
-    toBlock,
+    functionName: "getPlayers",
+    args: [rid],
   });
 }
 
-async function collectSettledLogs({ limit = 10, rid } = {}) {
+async function collectLogs(eventName, { limit = 10, rid } = {}) {
+  requireGameAddress();
+
   const latestBlock = await publicClient.getBlockNumber();
   const minBlock = latestBlock > MAX_LOG_LOOKBACK_BLOCKS ? latestBlock - MAX_LOG_LOOKBACK_BLOCKS : 0n;
   const matches = [];
+  const ridArg = rid === undefined || rid === null ? undefined : toBigInt(rid);
+  const args = ridArg === undefined ? undefined : { rid: ridArg };
 
-  let toBlock = _latestSettledBlock && _latestSettledBlock < latestBlock ? _latestSettledBlock : latestBlock;
+  let toBlock = latestSettledBlock && latestSettledBlock < latestBlock ? latestSettledBlock : latestBlock;
   while (toBlock >= minBlock) {
     const fromBlock = toBlock > LOG_BLOCK_SPAN ? toBlock - LOG_BLOCK_SPAN : 0n;
-    const logs = await getSettledLogsChunk(fromBlock, toBlock, rid);
+    const logs = await publicClient.getContractEvents({
+      address: CONFIG.game,
+      abi: GAME_ABI,
+      eventName,
+      args,
+      fromBlock,
+      toBlock,
+    });
 
     if (logs.length) {
       matches.push(...logs);
-      const highest = logs.reduce(
-        (best, log) => (typeof log.blockNumber === "bigint" && log.blockNumber > best ? log.blockNumber : best),
-        0n,
-      );
-      _latestSettledBlock = _latestSettledBlock === null || highest > _latestSettledBlock
-        ? highest
-        : _latestSettledBlock;
+      for (const log of logs) {
+        if (typeof log.blockNumber === "bigint") {
+          latestSettledBlock = latestSettledBlock === null || log.blockNumber > latestSettledBlock
+            ? log.blockNumber
+            : latestSettledBlock;
+        }
+      }
     }
 
-    if (typeof rid === "bigint" && matches.length) break;
+    if (ridArg !== undefined && matches.length) break;
     if (matches.length >= limit) break;
     if (fromBlock === 0n) break;
     toBlock = fromBlock - 1n;
   }
 
   return matches;
+}
+
+async function getDecryptedNumbers(rid) {
+  const logs = await collectLogs("RoundDecrypted", { rid, limit: 1 });
+  if (!logs.length) return [];
+  return (logs[logs.length - 1].args.numbers ?? []).map((value) => Number(value));
+}
+
+async function hydrateSettledLog(log) {
+  const cacheKey = `${log.transactionHash}:${log.args.rid}`;
+  if (resultCache.has(cacheKey)) return resultCache.get(cacheKey);
+
+  const rid = Number(log.args.rid);
+  const base = {
+    rid,
+    target: Number(log.args.target),
+    avg: Number(log.args.avgX1),
+    netPot: log.args.netPot,
+    grossPot: 0n,
+    rake: 0n,
+    payPerWinner: log.args.payPerWinner,
+    winners: Number(log.args.winners),
+    winnerAddresses: [],
+    guesses: [],
+    players: [],
+    txHash: log.transactionHash,
+  };
+
+  try {
+    const [tx, players] = await Promise.all([
+      publicClient.getTransaction({ hash: log.transactionHash }),
+      getPlayersForRound(log.args.rid),
+    ]);
+
+    base.players = players;
+
+    let guesses = await getDecryptedNumbers(log.args.rid);
+    if (!guesses.length) {
+      const decoded = decodeFunctionData({ abi: GAME_ABI, data: tx.input });
+      if (decoded.functionName === "settle") {
+        const [values] = decoded.args;
+        guesses = values.map((value) => Number(value));
+      }
+    }
+
+    base.guesses = guesses;
+    if (players.length && guesses.length) {
+      let minDistance = Number.POSITIVE_INFINITY;
+      for (const guess of guesses) {
+        const distance = Math.abs(guess - base.target);
+        if (distance < minDistance) minDistance = distance;
+      }
+
+      base.winnerAddresses = players.filter((_, index) =>
+        Math.abs((guesses[index] ?? Number.NaN) - base.target) === minDistance);
+    }
+
+  } catch {
+    // keep partial data if tx calldata or player lookup is unavailable
+  }
+
+  const gameMeta = await getGameMeta().catch(() => null);
+  const rakeBps = BigInt(gameMeta?.rakeBps ?? 0);
+  const entryFee = BigInt(gameMeta?.entryFee ?? 0n);
+
+  if (base.winnerAddresses.length) {
+    const payTotal = BigInt(base.winnerAddresses.length) * BigInt(base.payPerWinner);
+    base.netPot = base.netPot || payTotal;
+  }
+
+  if (entryFee > 0n && base.players.length) {
+    base.grossPot = BigInt(base.players.length) * entryFee;
+  }
+
+  if (base.netPot) {
+    const divisor = 10_000n - rakeBps;
+    base.grossPot = divisor > 0n ? (BigInt(base.netPot) * 10_000n) / divisor : BigInt(base.netPot);
+    base.rake = base.grossPot - BigInt(base.netPot);
+  }
+
+  resultCache.set(cacheKey, base);
+  return base;
 }
 
 function providerRank(provider) {
@@ -245,7 +318,6 @@ async function ensureChain(provider) {
   });
 }
 
-// ---------------------------------------------------------------- connect
 export async function connectWallet() {
   const providers = getInjectedProviders();
   if (!providers.length) throw new Error("No wallet found. Install Rabby, MetaMask, or a compatible wallet.");
@@ -257,7 +329,6 @@ export async function connectWallet() {
       try {
         await ensureChain(provider);
       } catch (error) {
-        // Some wallets require account authorization before chain operations.
         if (getErrorCode(error) === 4100) {
           await provider.request({ method: "eth_requestAccounts" });
           await ensureChain(provider);
@@ -270,8 +341,7 @@ export async function connectWallet() {
       if (!accounts?.length) throw new Error("Wallet returned no accounts.");
 
       const wallet = createWalletClient({ chain, transport: custom(provider) });
-      const [account] = accounts;
-      return { wallet, account };
+      return { wallet, account: getAddress(accounts[0]) };
     } catch (error) {
       lastError = error;
     }
@@ -280,69 +350,95 @@ export async function connectWallet() {
   throw lastError ?? new Error("Wallet connection failed.");
 }
 
-// ---------------------------------------------------------------- play
-/** Encrypt a guess (0..100) locally and join the current round. */
-export async function playRound(wallet, account, guess) {
-  const g = Math.max(0, Math.min(100, Math.round(Number(guess))));
+export async function playRound(wallet, account, pick) {
+  requireGameAddress();
+  requireTokenAddress();
+
   const entryFee = await publicClient.readContract({
     address: CONFIG.game,
     abi: GAME_ABI,
     functionName: "entryFee",
   });
 
-  const inco = await getInco();
-  const ciphertext = await inco.encrypt(BigInt(g), {
+  const encryptedPick = clampPick(pick);
+  const client = await getInco();
+  const ciphertext = await client.encrypt(BigInt(encryptedPick), {
     accountAddress: account,
     dappAddress: CONFIG.game,
-    handleType: handleTypes.euint256, // 8
+    handleType: handleTypes.euint256,
   });
 
-  // approve EXACT entry fee if needed
-  const erc20 = getContract({ address: CONFIG.token, abi: ERC20_ABI, client: { public: publicClient, wallet } });
+  const erc20 = getContract({
+    address: CONFIG.token,
+    abi: ERC20_ABI,
+    client: { public: publicClient, wallet },
+  });
+
   const allowance = await erc20.read.allowance([account, CONFIG.game]);
   if (allowance < entryFee) {
-    const aTx = await erc20.write.approve([CONFIG.game, entryFee], { account });
-    await publicClient.waitForTransactionReceipt({ hash: aTx });
+    const approveTx = await erc20.write.approve([CONFIG.game, entryFee], { account });
+    await publicClient.waitForTransactionReceipt({ hash: approveTx });
   }
 
-  const game = getContract({ address: CONFIG.game, abi: GAME_ABI, client: { public: publicClient, wallet } });
+  const game = getContract({
+    address: CONFIG.game,
+    abi: GAME_ABI,
+    client: { public: publicClient, wallet },
+  });
+
   const tx = await game.write.enter([ciphertext], { account });
   await publicClient.waitForTransactionReceipt({ hash: tx });
   return tx;
 }
 
-// ---------------------------------------------------------------- reads
 export async function getCurrentRound() {
-  const rid = await publicClient.readContract({ address: CONFIG.game, abi: GAME_ABI, functionName: "roundId" });
-  const [closesAt, settled, pot, playerCount] =
-    await publicClient.readContract({ address: CONFIG.game, abi: GAME_ABI, functionName: "getRound", args: [rid] });
-  return { rid, closesAt: Number(closesAt), settled, pot, playerCount: Number(playerCount) };
-}
-
-export async function getGameMeta() {
-  const [entryFee, rakeBps, roundDuration] = await Promise.all([
-    publicClient.readContract({ address: CONFIG.game, abi: GAME_ABI, functionName: "entryFee" }),
-    publicClient.readContract({ address: CONFIG.game, abi: GAME_ABI, functionName: "rakeBps" }),
-    publicClient.readContract({ address: CONFIG.game, abi: GAME_ABI, functionName: "roundDuration" }),
-  ]);
+  requireGameAddress();
+  const rid = await publicClient.readContract({
+    address: CONFIG.game,
+    abi: GAME_ABI,
+    functionName: "roundId",
+  });
+  const [closesAt, settled, pot, playerCount] = await publicClient.readContract({
+    address: CONFIG.game,
+    abi: GAME_ABI,
+    functionName: "getRound",
+    args: [rid],
+  });
 
   return {
-    entryFee,
-    rakeBps: Number(rakeBps),
-    roundDuration: Number(roundDuration),
+    rid: Number(rid),
+    closesAt: Number(closesAt),
+    settled,
+    pot,
+    playerCount: Number(playerCount),
   };
 }
 
-/** Result of a settled round, read from the Settled event (null if not settled yet). */
+export async function getGameMeta() {
+  requireGameAddress();
+  if (!gameMetaPromise) {
+    gameMetaPromise = Promise.all([
+      publicClient.readContract({ address: CONFIG.game, abi: GAME_ABI, functionName: "entryFee" }),
+      publicClient.readContract({ address: CONFIG.game, abi: GAME_ABI, functionName: "rakeBps" }),
+      publicClient.readContract({ address: CONFIG.game, abi: GAME_ABI, functionName: "roundDuration" }),
+    ]).then(([entryFee, rakeBps, roundDuration]) => ({
+      entryFee,
+      rakeBps: Number(rakeBps),
+      roundDuration: Number(roundDuration),
+    }));
+  }
+
+  return gameMetaPromise;
+}
+
 export async function getRoundResult(rid) {
-  const logs = await collectSettledLogs({ rid });
+  const logs = await collectLogs("Settled", { rid, limit: 1 });
   if (!logs.length) return null;
   return hydrateSettledLog(logs[logs.length - 1]);
 }
 
-/** Recent settled rounds, newest first, for the history/hi-scores panel. */
 export async function getRecentResults(limit = 10) {
-  const logs = await collectSettledLogs({ limit });
+  const logs = await collectLogs("Settled", { limit });
   const recent = logs
     .sort((left, right) => {
       const leftBlock = left.blockNumber ?? 0n;
@@ -351,5 +447,6 @@ export async function getRecentResults(limit = 10) {
       return leftBlock > rightBlock ? -1 : 1;
     })
     .slice(0, limit);
+
   return Promise.all(recent.map((log) => hydrateSettledLog(log)));
 }

@@ -2,7 +2,7 @@
 
 Confidential onchain game built on Inco Lightning.
 
-Players pay a fixed `$1` entry fee, submit an encrypted guess from `0..100`, and try to land closest to `2/3` of the average guess. Guesses stay hidden until the round closes. After the round closes, the contract opens decryption for the configured settler, the keeper asks Inco for attested decryptions, and the contract verifies them onchain, computes the target, and attempts to pay winners directly during settlement. If a token transfer fails, the game still advances and the owed amount becomes withdrawable credit.
+Players pay a fixed `$1` entry fee, submit an encrypted pick from `0..63`, and try to land closest to `2/3` of the average pick. Guesses stay hidden until the round closes. After the round closes, the contract opens decryption for the configured settler, the keeper asks Inco for attested decryptions, and the contract verifies them onchain, computes the target, emits the revealed round numbers for the UI, and attempts to pay winners directly during settlement. If a token transfer fails, the game still advances and the owed amount becomes withdrawable credit.
 
 ## Product Summary
 
@@ -41,7 +41,7 @@ two-thirds-game/
 ## Current Mainnet State
 
 - Frontend production URL: `https://two-thirds-game.vercel.app`
-- Mainnet contract: `0x8e2d24585e019585587b101765A3F2fC46524503`
+- Mainnet contract: `0x7E7B4863cb8bE69Ec9E4AAf2941B9289fEE9C524`
 - Network: `Base`
 - Mainnet keeper Fly app: `two-thirds-keeper-mainnet`
 - Testnet keeper Fly app: `two-thirds-keeper-testnet`
@@ -91,7 +91,7 @@ Required keeper env:
 ```bash
 RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
 SETTLER_PRIVATE_KEY=
-GAME_ADDRESS=0x8e2d24585e019585587b101765A3F2fC46524503
+GAME_ADDRESS=0x7E7B4863cb8bE69Ec9E4AAf2941B9289fEE9C524
 CHAIN_ID=8453
 INCO_PEPPER=mainnet
 TICK_SECONDS=30
@@ -114,7 +114,7 @@ VITE_INCO_PEPPER=mainnet
 VITE_CHAIN_ID=8453
 VITE_CHAIN_NAME=Base
 VITE_RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
-VITE_GAME_ADDRESS=0x8e2d24585e019585587b101765A3F2fC46524503
+VITE_GAME_ADDRESS=0x7E7B4863cb8bE69Ec9E4AAf2941B9289fEE9C524
 VITE_TOKEN_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 ```
 

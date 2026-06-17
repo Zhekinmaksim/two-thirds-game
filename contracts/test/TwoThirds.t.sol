@@ -108,13 +108,13 @@ contract TwoThirdsTest is Test {
         assertEq(token.balanceOf(treasury), (3 * FEE * RAKE_BPS) / 10_000, "rake");
     }
 
-    /// The 101st entrant in a round is rejected with "round full".
-    function test_RoundFull_RevertsOn101st() public {
-        for (uint256 i; i < 100; ++i) {
+    /// The 51st entrant in a round is rejected with "round full".
+    function test_RoundFull_RevertsOn51st() public {
+        for (uint256 i; i < 50; ++i) {
             _enter(address(uint160(1000 + i)), 50);
         }
         (, , , uint256 count) = game.getRound(game.roundId());
-        assertEq(count, 100, "exactly 100 seated");
+        assertEq(count, 50, "exactly 50 seated");
 
         address late = address(uint160(9999));
         token.mint(late, FEE);
