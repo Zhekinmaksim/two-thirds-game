@@ -239,6 +239,10 @@ function getResultSummary(result) {
   };
 }
 
+function clearSelection() {
+  state.selectedNumber = null;
+}
+
 function renderBoard() {
   const board = $("board");
   const reveal = Boolean(state.activeResult);
@@ -431,6 +435,7 @@ function renderResultPanel() {
   $("btnNext").onclick = () => {
     state.activeResult = null;
     persistLastResult(null);
+    clearSelection();
     renderBoard();
     renderControl();
     renderVerifyLinks();
@@ -532,12 +537,24 @@ async function syncResultState(integration) {
   if (state.pending?.rid !== undefined) {
     const pendingResult = await integration.getRoundResult(state.pending.rid);
     if (pendingResult) {
-      state.activeResult = {
+      const resolvedResult = {
         ...pendingResult,
         yourPick: state.pending.pick,
       };
-      persistLastResult({ rid: pendingResult.rid, pick: state.pending.pick });
+      const summary = getResultSummary(resolvedResult);
+
       persistPending(null);
+      clearSelection();
+
+      if (!summary.youWon) {
+        state.activeResult = null;
+        persistLastResult(null);
+        setStatusMessage("Round settled. No win this time, the board is reset for the live round.");
+        return;
+      }
+
+      state.activeResult = resolvedResult;
+      persistLastResult({ rid: pendingResult.rid, pick: resolvedResult.yourPick });
       return;
     }
   }
@@ -649,6 +666,7 @@ function bindEvents() {
     if (state.activeResult || isPendingRoundLive()) return;
     const card = event.target.closest(".tt-cardcell");
     if (!card) return;
+    setStatusMessage("");
     state.selectedNumber = Number(card.dataset.i);
     renderBoard();
     renderControl();
@@ -662,7 +680,7 @@ function startLoops() {
     renderStatus();
     const secondsLeft = currentSecondsLeft();
     if (secondsLeft === null) return;
-    if (secondsLeft === 0 && Date.now() - state.lastRefreshAt > 4_000) refresh();
+    if (secondsLeft === 0 && Date.now() - state.lastRefreshAt > 1_250) refresh();
   }, 1_000);
 
   window.setInterval(() => {
