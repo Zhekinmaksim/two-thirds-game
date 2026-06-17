@@ -116,7 +116,9 @@ function requireTokenAddress() {
 
 async function getInco() {
   if (inco) return inco;
-  inco = await IncoLite.Lightning.latest(CONFIG.pepper, CONFIG.chainId);
+  inco = await IncoLite.Lightning.latest(CONFIG.pepper, CONFIG.chainId, {
+    hostChainRpcUrls: rpcUrls,
+  });
   return inco;
 }
 
