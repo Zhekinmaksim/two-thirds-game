@@ -36,6 +36,8 @@ const RPC_FALLBACKS = {
 };
 
 const rpcUrls = [...new Set([CONFIG.rpcUrl, ...(RPC_FALLBACKS[CONFIG.chainId] ?? [])])];
+const LOG_BLOCK_SPAN = 5_000n;
+const MAX_LOG_LOOKBACK_BLOCKS = 100_000n;
 
 const GAME_ABI = parseAbi([
   "function enter(bytes ciphertext)",
@@ -67,6 +69,7 @@ export const publicClient = createPublicClient({
 
 let _inco = null;
 const resultCache = new Map();
+let _latestSettledBlock = null;
 
 async function getInco() {
   if (_inco) return _inco;
@@ -127,7 +130,53 @@ async function hydrateSettledLog(log) {
   }
 
   resultCache.set(cacheKey, base);
+  if (typeof log.blockNumber === "bigint") {
+    _latestSettledBlock = _latestSettledBlock === null || log.blockNumber > _latestSettledBlock
+      ? log.blockNumber
+      : _latestSettledBlock;
+  }
   return base;
+}
+
+async function getSettledLogsChunk(fromBlock, toBlock, rid) {
+  return publicClient.getContractEvents({
+    address: CONFIG.game,
+    abi: GAME_ABI,
+    eventName: "Settled",
+    ...(typeof rid === "bigint" ? { args: { rid } } : {}),
+    fromBlock,
+    toBlock,
+  });
+}
+
+async function collectSettledLogs({ limit = 10, rid } = {}) {
+  const latestBlock = await publicClient.getBlockNumber();
+  const minBlock = latestBlock > MAX_LOG_LOOKBACK_BLOCKS ? latestBlock - MAX_LOG_LOOKBACK_BLOCKS : 0n;
+  const matches = [];
+
+  let toBlock = _latestSettledBlock && _latestSettledBlock < latestBlock ? _latestSettledBlock : latestBlock;
+  while (toBlock >= minBlock) {
+    const fromBlock = toBlock > LOG_BLOCK_SPAN ? toBlock - LOG_BLOCK_SPAN : 0n;
+    const logs = await getSettledLogsChunk(fromBlock, toBlock, rid);
+
+    if (logs.length) {
+      matches.push(...logs);
+      const highest = logs.reduce(
+        (best, log) => (typeof log.blockNumber === "bigint" && log.blockNumber > best ? log.blockNumber : best),
+        0n,
+      );
+      _latestSettledBlock = _latestSettledBlock === null || highest > _latestSettledBlock
+        ? highest
+        : _latestSettledBlock;
+    }
+
+    if (typeof rid === "bigint" && matches.length) break;
+    if (matches.length >= limit) break;
+    if (fromBlock === 0n) break;
+    toBlock = fromBlock - 1n;
+  }
+
+  return matches;
 }
 
 function providerRank(provider) {
@@ -286,20 +335,21 @@ export async function getGameMeta() {
 
 /** Result of a settled round, read from the Settled event (null if not settled yet). */
 export async function getRoundResult(rid) {
-  const logs = await publicClient.getContractEvents({
-    address: CONFIG.game, abi: GAME_ABI, eventName: "Settled",
-    args: { rid }, fromBlock: "earliest", toBlock: "latest",
-  });
+  const logs = await collectSettledLogs({ rid });
   if (!logs.length) return null;
   return hydrateSettledLog(logs[logs.length - 1]);
 }
 
 /** Recent settled rounds, newest first, for the history/hi-scores panel. */
 export async function getRecentResults(limit = 10) {
-  const logs = await publicClient.getContractEvents({
-    address: CONFIG.game, abi: GAME_ABI, eventName: "Settled",
-    fromBlock: "earliest", toBlock: "latest",
-  });
-  const recent = logs.slice(-limit).reverse();
+  const logs = await collectSettledLogs({ limit });
+  const recent = logs
+    .sort((left, right) => {
+      const leftBlock = left.blockNumber ?? 0n;
+      const rightBlock = right.blockNumber ?? 0n;
+      if (leftBlock === rightBlock) return Number((right.logIndex ?? 0) - (left.logIndex ?? 0));
+      return leftBlock > rightBlock ? -1 : 1;
+    })
+    .slice(0, limit);
   return Promise.all(recent.map((log) => hydrateSettledLog(log)));
 }

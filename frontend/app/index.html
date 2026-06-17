@@ -174,7 +174,9 @@
     letter-spacing:1px;
   }
 
-  .tt-board{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px}
+  .tt-board{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px;min-height:420px;align-content:start}
+  .tt-board.is-empty{display:flex;align-items:center;justify-content:center;border:1px dashed color-mix(in oklab,var(--accent),#050302 72%);background:#0b0805;padding:24px}
+  .tt-empty-field{font-size:18px;color:var(--accent-faint);text-align:center;max-width:280px;line-height:1.25}
   .tt-cardcell{
     position:relative;
     aspect-ratio:3/4;
@@ -359,6 +361,7 @@
   }
   @media (max-width:640px){
     .tt-board{grid-template-columns:repeat(5,1fr)}
+    .tt-board.is-empty{min-height:220px}
   }
 </style>
 </head>

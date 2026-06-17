@@ -92,11 +92,11 @@ function renderBoard() {
   for (let i = 0; i < count; i += 1) {
     cards.push(buildCard({ mine: i === mineSeat }));
   }
-  for (let i = count; i < MAX_PLAYERS; i += 1) {
-    cards.push(buildCard({ empty: true }));
-  }
-
-  $("board").innerHTML = cards.join("");
+  const board = $("board");
+  board.classList.toggle("is-empty", count === 0);
+  board.innerHTML = count
+    ? cards.join("")
+    : '<div class="tt-empty-field">Waiting for the first sealed entry in this round.</div>';
 }
 
 function renderStatus() {
@@ -382,14 +382,21 @@ async function refresh() {
 
   try {
     const { getCurrentRound, getRecentResults, getRoundResult } = await loadIntegration();
-    const [round, recent] = await Promise.all([
-      getCurrentRound(),
-      getRecentResults(RECENT_LIMIT),
-    ]);
+    const round = await getCurrentRound();
 
     currentRound = round;
     renderBoard();
     renderStatus();
+    renderPhase();
+    updateActionCopy();
+
+    let recent = [];
+    try {
+      recent = await getRecentResults(RECENT_LIMIT);
+    } catch {
+      recent = [];
+    }
+
     renderHistory(recent);
     renderLeaderboard(recent);
     renderFeed(recent);
@@ -398,26 +405,30 @@ async function refresh() {
     let activeResult = null;
 
     if (targetResultRid) {
-      activeResult = await getRoundResult(BigInt(targetResultRid));
-      if (activeResult) {
-        shownResultRid = targetResultRid;
-        renderVerify(activeResult);
-        renderReveal(activeResult);
-
-        if (myRid && Number(myRid) === Number(activeResult.rid) && Number(currentRound.rid) !== Number(myRid)) {
-          resolvedPersonalResult = activeResult;
-          myRid = null;
-        }
+      try {
+        activeResult = await getRoundResult(BigInt(targetResultRid));
+      } catch {
+        activeResult = null;
       }
     }
 
-    if (!activeResult && shownResultRid === null) {
+    if (activeResult) {
+      shownResultRid = targetResultRid;
+      renderVerify(activeResult);
+      renderReveal(activeResult);
+
+      if (myRid && Number(myRid) === Number(activeResult.rid) && Number(currentRound.rid) !== Number(myRid)) {
+        resolvedPersonalResult = activeResult;
+        myRid = null;
+      }
+    } else if (shownResultRid === null) {
       renderVerify(null);
       renderReveal(null);
     }
 
-    renderPhase();
-    updateActionCopy();
+    $("walletHelp").textContent = wallet
+      ? `Wallet connected: ${shortAddr(account)}. Your guess will be encrypted in-browser before submission.`
+      : "Public data is visible without a wallet. Connect only when you want to seal a real onchain guess.";
   } catch (error) {
     $("walletHelp").textContent = formatUiError(
       error,
