@@ -413,7 +413,7 @@ function renderResultPanel() {
       · ${summary.winnersPlayers} ${summary.winnersPlayers === 1 ? "winner" : "winners"}
     </div>
     <div class="tt-share" style="border:1px solid ${summary.youWon ? "color-mix(in oklab,var(--green),#050302 50%)" : "color-mix(in oklab,var(--red),#050302 50%)"};background:${summary.youWon ? "linear-gradient(135deg,#0c1308,#0a0705)" : "linear-gradient(135deg,#150a0c,#0a0705)"}">
-      <span class="dom">twothird.fun</span>
+      <span class="dom">twothirds.fun</span>
       <div class="logo">TWO<span style="color:var(--red)">·</span>THIRDS</div>
       <div class="big" style="color:${verdictColor};text-shadow:0 0 14px ${verdictGlow}">${shareBig}</div>
       <div class="sub">card #${yourPick} · target ${result.target} · round ${formatRound(result.rid)}</div>
