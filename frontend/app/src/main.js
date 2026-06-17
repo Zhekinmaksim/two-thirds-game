@@ -1,5 +1,5 @@
 const BOARD_SIZE = 64;
-const MAX_PLAYERS = 50;
+const MAX_PLAYERS = 100;
 const RECENT_LIMIT = 12;
 const REFRESH_MS = 12_000;
 const STORAGE_PENDING = "twothirds:pending";
@@ -177,7 +177,7 @@ function renderStatus() {
   if (!state.currentRound) {
     $("sRound").textContent = "#--";
     $("sPot").textContent = "$0.00";
-    $("sPlayers").textContent = "0";
+    $("sPlayers").textContent = `0 / ${MAX_PLAYERS}`;
     $("sTimer").textContent = "--:--";
     return;
   }
@@ -185,7 +185,7 @@ function renderStatus() {
   const players = toNumber(state.currentRound.playerCount);
   $("sRound").textContent = formatRound(state.currentRound.rid);
   $("sPot").textContent = usd(state.currentRound.pot);
-  $("sPlayers").textContent = String(players);
+  $("sPlayers").textContent = `${players} / ${MAX_PLAYERS}`;
   $("sTimer").textContent = formatTimer(currentSecondsLeft());
 }
 

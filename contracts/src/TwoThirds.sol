@@ -49,7 +49,7 @@ contract TwoThirds {
     uint16  public constant MAX_GUESS   = 63;   // 64 cards, numbered 0..63
     uint16  public constant MAX_RAKE    = 1000; // 10%
     uint16  public constant MIN_PLAYERS = 2;    // below this, the pot rolls into the next round
-    uint16  public constant MAX_PLAYERS = 50;   // matches the 8x8 board UI and keeps settle() bounded
+    uint16  public constant MAX_PLAYERS = 100;  // bounded so settle() remains safe on mainnet
 
     // ---- round state ----
     struct Round {
