@@ -1,22 +1,19 @@
-import {
-  CONFIG,
-  connectWallet,
-  getCurrentRound,
-  getGameMeta,
-  getRecentResults,
-  getRoundResult,
-  playRound,
-} from "./inco.js";
-
 const MAX_PLAYERS = 50;
 const RECENT_LIMIT = 16;
 const $ = (id) => document.getElementById(id);
+const ENV = import.meta.env ?? {};
+const APP_CONFIG = {
+  chainId: Number(ENV.VITE_CHAIN_ID ?? 8453),
+  game: ENV.VITE_GAME_ADDRESS ?? "",
+};
 
 const usd = (value) => `$${(Number(value) / 1e6).toFixed(2)}`;
 const shortAddr = (value) => `${value.slice(0, 6)}…${value.slice(-4)}`;
 const shortTx = (value) => `${value.slice(0, 4)}…${value.slice(-4)}`;
 const formatRound = (rid) => `#${String(Number(rid)).padStart(3, "0")}`;
-const explorerBase = CONFIG.chainId === 84532 ? "https://sepolia.basescan.org" : "https://basescan.org";
+const explorerBase = APP_CONFIG.chainId === 84532 ? "https://sepolia.basescan.org" : "https://basescan.org";
+
+let integrationPromise = null;
 
 let wallet = null;
 let account = null;
@@ -28,6 +25,11 @@ let gameMeta = null;
 let shownResultRid = null;
 let resolvedPersonalResult = null;
 const myGuesses = new Map();
+
+async function loadIntegration() {
+  if (!integrationPromise) integrationPromise = import("./inco.js");
+  return integrationPromise;
+}
 
 function formatUiError(error, fallback) {
   const raw = error?.shortMessage || error?.message || "";
@@ -49,9 +51,20 @@ function setGuess(value) {
 }
 
 function setContractInfo() {
-  $("contractShort").textContent = shortAddr(CONFIG.game);
-  $("contractLink").href = `${explorerBase}/address/${CONFIG.game}`;
-  $("verifyOnchainLink").href = `${explorerBase}/address/${CONFIG.game}`;
+  if (!APP_CONFIG.game) {
+    $("contractShort").textContent = "unavailable";
+    $("contractLink").removeAttribute("href");
+    $("contractLink").classList.add("is-disabled");
+    $("verifyOnchainLink").removeAttribute("href");
+    $("verifyOnchainLink").classList.add("is-disabled");
+    return;
+  }
+
+  $("contractShort").textContent = shortAddr(APP_CONFIG.game);
+  $("contractLink").href = `${explorerBase}/address/${APP_CONFIG.game}`;
+  $("contractLink").classList.remove("is-disabled");
+  $("verifyOnchainLink").href = `${explorerBase}/address/${APP_CONFIG.game}`;
+  $("verifyOnchainLink").classList.remove("is-disabled");
 }
 
 function buildCard({ mine = false, empty = false } = {}) {
@@ -127,7 +140,7 @@ function renderVerify(result) {
     $("lastTx").textContent = "waiting for settle";
     $("lastTxLink").removeAttribute("href");
     $("lastTxLink").classList.add("is-disabled");
-    $("verifyOnchainLink").href = `${explorerBase}/address/${CONFIG.game}`;
+    if (APP_CONFIG.game) $("verifyOnchainLink").href = `${explorerBase}/address/${APP_CONFIG.game}`;
     return;
   }
 
@@ -252,6 +265,15 @@ function renderHistory(results) {
   }).join("");
 }
 
+function renderSparkPlaceholder() {
+  const placeholder = [18, 24, 37, 31, 42, 50];
+  $("spark").innerHTML = placeholder.map((value, index, list) => {
+    const height = 8 + (value / 100) * 42;
+    const cls = index === list.length - 1 ? "last" : "";
+    return `<i class="${cls}" style="height:${height.toFixed(0)}px"></i>`;
+  }).join("");
+}
+
 function renderLeaderboard(results) {
   const winners = new Map();
 
@@ -359,6 +381,7 @@ async function refresh() {
   refreshInFlight = true;
 
   try {
+    const { getCurrentRound, getRecentResults, getRoundResult } = await loadIntegration();
     const [round, recent] = await Promise.all([
       getCurrentRound(),
       getRecentResults(RECENT_LIMIT),
@@ -430,6 +453,7 @@ $("control").addEventListener("click", (event) => {
 $("btnSeal").addEventListener("click", async () => {
   try {
     if (!wallet) {
+      const { connectWallet } = await loadIntegration();
       $("btnSeal").disabled = true;
       $("btnSeal").textContent = "▸ CONNECTING...";
       ({ wallet, account } = await connectWallet());
@@ -441,6 +465,7 @@ $("btnSeal").addEventListener("click", async () => {
 
     $("btnSeal").disabled = true;
     $("btnSeal").textContent = "▸ SEALING...";
+    const { getCurrentRound, playRound } = await loadIntegration();
     const { rid } = await getCurrentRound();
     await playRound(wallet, account, guess);
     myRid = Number(rid);
@@ -464,11 +489,13 @@ async function init() {
   setContractInfo();
   setGuess(33);
   renderBoard();
+  renderSparkPlaceholder();
   renderStatus();
   renderPhase();
   updateActionCopy();
 
   try {
+    const { getGameMeta } = await loadIntegration();
     renderMeta(await getGameMeta());
   } catch {
     $("entryFee").textContent = "$1.00";
