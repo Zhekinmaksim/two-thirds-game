@@ -12,12 +12,15 @@
 
 import "dotenv/config";
 import nodeHttp from "node:http";
+import { createRequire } from "node:module";
 import {
   createPublicClient, createWalletClient, fallback, http, defineChain,
   parseAbi, getContract, bytesToHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import * as IncoLite from "@inco/js/lite";
+
+const require = createRequire(import.meta.url);
+const { Lightning } = require("@inco/js/lite");
 
 const {
   RPC_URL, SETTLER_PRIVATE_KEY, GAME_ADDRESS,
@@ -67,7 +70,9 @@ const state = {
 let inco;
 async function getInco() {
   if (inco) return inco;
-  inco = await IncoLite.Lightning.latest(INCO_PEPPER, Number(CHAIN_ID));
+  inco = await Lightning.latest(INCO_PEPPER, Number(CHAIN_ID), {
+    hostChainRpcUrls: rpcUrls,
+  });
   return inco;
 }
 
