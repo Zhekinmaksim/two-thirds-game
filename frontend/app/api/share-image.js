@@ -1,13 +1,6 @@
 import { createElement as h } from "react";
 import { ImageResponse } from "@vercel/og";
 
-function readNumber(url, key, fallback) {
-  const raw = url.searchParams.get(key);
-  if (!raw) return fallback;
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : fallback;
-}
-
 function readText(url, key, fallback) {
   return url.searchParams.get(key)?.trim() || fallback;
 }
@@ -21,124 +14,270 @@ function box(style, ...children) {
   return h("div", { style: { display: "flex", ...style } }, ...children);
 }
 
+function miniCell(index, winNum, yourNum) {
+  const isWin = index === winNum;
+  const isMine = index === yourNum;
+  const background = isWin
+    ? "linear-gradient(180deg, #16361a 0%, #0c220f 100%)"
+    : isMine
+      ? "#0c1417"
+      : "repeating-linear-gradient(45deg, #473313 0 4px, #33240d 4px 8px)";
+  const borderColor = isWin ? "#45e645" : isMine ? "#36f5ff" : "rgba(255,176,0,0.28)";
+  const textColor = isWin ? "#9dffa0" : isMine ? "#9fe9ff" : "rgba(255,176,0,0.7)";
+  const boxShadow = isWin
+    ? "0 0 12px rgba(69,230,69,0.55)"
+    : isMine
+      ? "0 0 8px rgba(54,245,255,0.45)"
+      : "none";
+  const opacity = isWin || isMine ? "1" : "0.55";
+
+  return box(
+    {
+      width: 36,
+      height: 36,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 4,
+      border: `1px solid ${borderColor}`,
+      background,
+      boxShadow,
+      opacity,
+    },
+    box(
+      {
+        fontSize: 10,
+        color: textColor,
+        fontWeight: 700,
+      },
+      String(index),
+    ),
+  );
+}
+
+function miniGrid(winNum, yourNum) {
+  const rows = [];
+  for (let row = 0; row < 8; row += 1) {
+    const cells = [];
+    for (let col = 0; col < 8; col += 1) {
+      const index = row * 8 + col;
+      cells.push(miniCell(index, winNum, yourNum));
+    }
+    rows.push(box({ gap: 5 }, ...cells));
+  }
+  return box({ flexDirection: "column", gap: 5 }, ...rows);
+}
+
 export default async function handler(request, response) {
   const proto = readHeader(request.headers, "x-forwarded-proto") ?? "https";
   const host = readHeader(request.headers, "host") ?? "twothirds.fun";
   const url = new URL(request.url ?? "/", `${proto}://${host}`);
+
   const rid = readText(url, "rid", "0");
-  const card = readText(url, "card", "0");
+  const yourNum = Number(readText(url, "card", "0"));
   const target = readText(url, "target", "0");
   const avg = readText(url, "avg", "0");
   const pot = readText(url, "pot", "$0.00");
   const pay = readText(url, "pay", "$0.00");
   const won = url.searchParams.get("won") === "1";
   const off = readText(url, "off", "0");
-  const winners = readText(url, "winners", "0");
-  const accent = won ? "#45e645" : "#ff3b5c";
-  const subtitle = won
-    ? `${winners} winner${winners === "1" ? "" : "s"} split ${pot}`
-    : `off by ${off} · next one is mine`;
-  const big = won ? `WON ${pay}` : `CARD #${card}`;
-  const sideLabel = won ? "WINNER PAYOUT" : "TARGET";
-  const sideValue = won ? pay : `#${target}`;
-  const averageDisplay = Number.isFinite(readNumber(url, "avg", Number(avg))) ? avg : "0";
+  const winners = Number(readText(url, "winners", "0"));
+  const winNum = Number(readText(url, "win", target));
+
+  const bigText = won ? `WON ${pay}` : `OFF BY ${off}`;
+  const note = won
+    ? winners > 1
+      ? `closest of the field · ${winners} winners split ${pot}`
+      : `closest of the field · 1 winner takes ${pay}`
+    : "so close · next one is mine";
+  const verdictColor = won ? "#45e645" : "#ff3b5c";
+  const footRight = won ? "auto-paid ✓" : `your #${yourNum}`;
 
   const image = new ImageResponse(
     box(
       {
         width: "100%",
         height: "100%",
-        display: "flex",
         position: "relative",
-        background: "#080503",
+        overflow: "hidden",
+        background: "radial-gradient(125% 90% at 50% 0%, #1c1208 0%, #0a0705 58%, #050302 100%)",
         color: "#ffb000",
         fontFamily: "monospace",
-        overflow: "hidden",
       },
       box({
         position: "absolute",
-        inset: "0",
+        inset: 0,
         background:
-          "radial-gradient(120% 90% at 50% 0%, rgba(255,176,0,0.12) 0%, rgba(8,5,3,0) 58%), linear-gradient(180deg, #140d06 0%, #080503 100%)",
+          "repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 3px)",
+        mixBlendMode: "multiply",
+      }),
+      box({
+        position: "absolute",
+        inset: 0,
+        background: "radial-gradient(125% 100% at 50% 50%, rgba(0,0,0,0) 58%, rgba(0,0,0,0.55) 100%)",
+      }),
+      box({
+        position: "absolute",
+        inset: 26,
+        border: "2px solid rgba(255,176,0,0.28)",
+        borderRadius: 6,
       }),
       box(
         {
           position: "absolute",
-          inset: "22px",
-          border: "2px solid rgba(255,176,0,0.32)",
-          display: "flex",
+          inset: 0,
+          padding: "48px 52px",
           flexDirection: "column",
-          padding: "34px 40px",
-          justifyContent: "space-between",
         },
         box(
-          { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
+          { justifyContent: "space-between", alignItems: "center" },
           box(
-            { display: "flex", flexDirection: "column" },
-            box({ fontSize: 22, color: "rgba(255,176,0,0.8)", letterSpacing: 2 }, "BASE · USDC · INCO ENCRYPTED"),
-            box(
-              { fontSize: 76, marginTop: 18, color: "#ffb000", letterSpacing: 4, textShadow: "0 0 24px rgba(255,176,0,0.28)" },
-              "TWO",
-              h("span", { style: { color: "#ff3b5c" } }, "·"),
-              "THIRDS",
-            ),
+            {
+              fontSize: 23,
+              letterSpacing: 3,
+              color: "rgba(255,176,0,0.68)",
+            },
+            "BASE · USDC · INCO ENCRYPTED",
           ),
           box(
             {
-              display: "flex",
-              fontSize: 20,
-              color: "#080503",
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#0a0705",
               background: "#ffb000",
-              padding: "10px 14px",
-              borderRadius: 4,
-              letterSpacing: 2,
+              padding: "9px 13px",
+              borderRadius: 3,
+              letterSpacing: 1,
+              boxShadow: "0 0 14px rgba(255,176,0,0.45)",
             },
-            `ROUND #${rid}`,
+            `ROUND #${rid.padStart(2, "0")}`,
           ),
         ),
         box(
-          { display: "flex", gap: 22, alignItems: "stretch" },
+          {
+            marginTop: 22,
+            fontSize: 50,
+            fontWeight: 700,
+            letterSpacing: 2,
+            color: "#ffb000",
+            textShadow: "0 0 10px rgba(255,176,0,0.5), 0 0 30px rgba(255,176,0,0.28)",
+          },
+          "TWO",
+          h("span", { style: { color: "#ff3b5c" } }, "·"),
+          "THIRDS",
+        ),
+        box(
+          {
+            flex: 1,
+            gap: 32,
+            alignItems: "center",
+            marginTop: 18,
+          },
           box(
-            {
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              border: "1px solid rgba(255,176,0,0.28)",
-              background: "rgba(12,8,4,0.78)",
-              padding: "24px 26px",
-            },
-            box({ fontSize: 22, color: "rgba(255,176,0,0.75)", letterSpacing: 2 }, "YOUR RESULT"),
-            box({ fontSize: 70, color: accent, marginTop: 18, textShadow: `0 0 20px ${accent}55` }, big),
-            box({ fontSize: 28, color: "#36f5ff", marginTop: 10 }, `card #${card} · target ${target}`),
-            box({ fontSize: 22, color: "rgba(255,176,0,0.86)", marginTop: 18 }, subtitle),
-          ),
-          box(
-            {
-              width: 290,
-              display: "flex",
-              flexDirection: "column",
-              border: "1px solid rgba(54,245,255,0.28)",
-              background: "rgba(11,16,19,0.82)",
-              padding: "24px 26px",
-              justifyContent: "space-between",
-            },
+            { flex: 1, flexDirection: "column" },
             box(
-              { display: "flex", flexDirection: "column" },
-              box({ fontSize: 20, color: "#36f5ff", letterSpacing: 2 }, sideLabel),
-              box({ fontSize: 54, color: won ? "#45e645" : "#36f5ff", marginTop: 12 }, sideValue),
+              {
+                fontSize: 24,
+                letterSpacing: 3,
+                color: "rgba(255,176,0,0.66)",
+              },
+              "YOUR RESULT",
             ),
             box(
-              { display: "flex", flexDirection: "column", gap: 10 },
-              box({ fontSize: 20, color: "rgba(255,176,0,0.72)" }, `avg ${averageDisplay}`),
-              box({ fontSize: 20, color: "rgba(255,176,0,0.72)" }, `pot ${pot}`),
-              box({ fontSize: 20, color: "rgba(255,176,0,0.72)" }, "automatic payout"),
+              {
+                marginTop: 18,
+                fontSize: won ? 64 : 60,
+                fontWeight: 700,
+                color: verdictColor,
+                textShadow: won
+                  ? "0 0 16px rgba(69,230,69,0.6), 0 0 40px rgba(69,230,69,0.3)"
+                  : "0 0 16px rgba(255,59,92,0.55), 0 0 40px rgba(255,59,92,0.28)",
+              },
+              bigText,
+            ),
+            box(
+              {
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#36f5ff",
+                textShadow: "0 0 8px rgba(54,245,255,0.4)",
+                marginTop: 14,
+              },
+              `CARD #${yourNum} · TARGET ${target}`,
+            ),
+            box(
+              {
+                fontSize: 25,
+                color: "rgba(255,176,0,0.74)",
+                marginTop: 12,
+              },
+              note,
+            ),
+          ),
+          box(
+            { width: 360, flexDirection: "column" },
+            box(
+              { justifyContent: "space-between", alignItems: "baseline", marginBottom: 9 },
+              box(
+                {
+                  fontSize: 20,
+                  letterSpacing: 2,
+                  color: "#45e645",
+                  textShadow: "0 0 8px rgba(69,230,69,0.4)",
+                },
+                "WINNING CARD",
+              ),
+              box(
+                {
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#45e645",
+                  textShadow: "0 0 8px rgba(69,230,69,0.5)",
+                },
+                `#${winNum}`,
+              ),
+            ),
+            miniGrid(winNum, yourNum),
+            box(
+              {
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: 21,
+                color: "rgba(255,176,0,0.66)",
+                marginTop: 11,
+              },
+              box({}, `avg ${avg} · pot ${pot}`),
+              box(
+                {
+                  color: won ? "#45e645" : "#36f5ff",
+                },
+                footRight,
+              ),
             ),
           ),
         ),
         box(
-          { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 24, color: "rgba(255,176,0,0.72)" },
-          box({}, "guess 2/3 of the average · lowest distance takes the pot"),
-          box({ color: "#36f5ff" }, "twothirds.fun"),
+          {
+            justifyContent: "space-between",
+            alignItems: "baseline",
+            borderTop: "1px solid rgba(255,176,0,0.22)",
+            paddingTop: 16,
+            marginTop: 6,
+          },
+          box(
+            {
+              fontSize: 24,
+              color: "rgba(255,176,0,0.66)",
+            },
+            "guess 2/3 of the average · lowest distance takes the pot",
+          ),
+          box(
+            {
+              fontSize: 17,
+              fontWeight: 700,
+              color: "#ffb000",
+            },
+            "twothird.fun",
+          ),
         ),
       ),
     ),

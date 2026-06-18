@@ -81,6 +81,7 @@ function buildSharePageUrl(result, summary) {
     pay: usd(result.payPerWinner),
     off: String(summary.off ?? 0),
     winners: String(summary.winnersPlayers),
+    win: String(summary.winNums[0] ?? result.target),
   });
 
   return `https://two-thirds-game.vercel.app/api/share?${params.toString()}`;
@@ -266,6 +267,75 @@ function clearSelection() {
   state.selectedNumber = null;
 }
 
+function totalNetPot(result, summary) {
+  if (result.netPot !== undefined && result.netPot !== null) return result.netPot;
+  return BigInt(summary.winnersPlayers) * BigInt(result.payPerWinner ?? 0n);
+}
+
+function buildShareMiniGrid(summary, yourPick) {
+  return Array.from({ length: BOARD_SIZE }, (_, index) => {
+    const classes = ["tt-mini-card"];
+    if (summary.winSet[index]) classes.push("win");
+    if (yourPick === index) classes.push("mine");
+    if (!summary.winSet[index] && yourPick !== index) classes.push("dimmed");
+    return `<div class="${classes.join(" ")}"><span>${index}</span></div>`;
+  }).join("");
+}
+
+function buildSharePreviewCard(result, summary) {
+  const yourPick = Number(result.yourPick);
+  const winLabel = summary.winNums.length
+    ? `#${summary.winNums[0]}${summary.winNums.length > 1 ? ` +${summary.winNums.length - 1}` : ""}`
+    : "—";
+  const bigText = summary.youWon ? `WON ${usd(result.payPerWinner)}` : `OFF BY ${summary.off ?? "0"}`;
+  const note = summary.youWon
+    ? summary.winnersPlayers > 1
+      ? `closest of the field · ${summary.winnersPlayers} winners split ${usd(totalNetPot(result, summary))}`
+      : `closest of the field · 1 winner takes ${usd(result.payPerWinner)}`
+    : "so close · next one is mine";
+  const footRight = summary.youWon
+    ? '<span class="paid">auto-paid ✓</span>'
+    : `<span class="mine">your #${yourPick}</span>`;
+
+  return `
+    <div class="tt-sharecard">
+      <div class="tt-sharecard-border"></div>
+      <div class="tt-sharecard-pad">
+        <div class="tt-sharecard-top">
+          <span class="tt-sharecard-chain">BASE · USDC · INCO ENCRYPTED</span>
+          <span class="tt-sharecard-round tt-px">ROUND ${formatRound(result.rid)}</span>
+        </div>
+        <div class="tt-sharecard-logo tt-px">TWO<span class="dot">·</span>THIRDS</div>
+        <div class="tt-sharecard-mid">
+          <div class="tt-sharecard-copy">
+            <div class="tt-sharecard-label">YOUR RESULT</div>
+            <div class="tt-sharecard-big ${summary.youWon ? "win" : "loss"} tt-px">${bigText}</div>
+            <div class="tt-sharecard-sub tt-px">CARD #${yourPick} · TARGET ${result.target}</div>
+            <div class="tt-sharecard-note">${note}</div>
+          </div>
+          <div class="tt-sharecard-side">
+            <div class="tt-sharecard-bhd">
+              <span class="l">WINNING CARD</span>
+              <span class="v tt-px">${winLabel}</span>
+            </div>
+            <div class="tt-sharecard-grid">${buildShareMiniGrid(summary, yourPick)}</div>
+            <div class="tt-sharecard-foot">
+              <span>avg ${Number(result.avg).toFixed(1)} · pot ${usd(result.grossPot ?? result.netPot)}</span>
+              ${footRight}
+            </div>
+          </div>
+        </div>
+        <div class="tt-sharecard-tag">
+          <span class="t">guess ⅔ of the average · lowest distance takes the pot</span>
+          <span class="d tt-px">twothirds.fun</span>
+        </div>
+      </div>
+      <div class="tt-sharecard-scan"></div>
+      <div class="tt-sharecard-vig"></div>
+    </div>
+  `;
+}
+
 function renderBoard() {
   const board = $("board");
   const reveal = Boolean(state.activeResult);
@@ -440,13 +510,7 @@ function renderResultPanel() {
       · <span class="k">WINNER PAYOUT</span> <span class="pay">${usd(result.payPerWinner)}</span>
       · ${summary.winnersPlayers} ${summary.winnersPlayers === 1 ? "winner" : "winners"}
     </div>
-    <div class="tt-share" style="border:1px solid ${summary.youWon ? "color-mix(in oklab,var(--green),#050302 50%)" : "color-mix(in oklab,var(--red),#050302 50%)"};background:${summary.youWon ? "linear-gradient(135deg,#0c1308,#0a0705)" : "linear-gradient(135deg,#150a0c,#0a0705)"}">
-      <span class="dom">twothirds.fun</span>
-      <div class="logo">TWO<span style="color:var(--red)">·</span>THIRDS</div>
-      <div class="big" style="color:${verdictColor};text-shadow:0 0 14px ${verdictGlow}">${shareBig}</div>
-      <div class="sub">card #${yourPick} · target ${result.target} · round ${formatRound(result.rid)}</div>
-      <div class="seal">encrypted by Inco · settled automatically by contract</div>
-    </div>
+    ${buildSharePreviewCard(result, summary)}
     <button class="tt-btn" id="btnShare" type="button">▸ SHARE TO 𝕏</button>
     <button class="tt-btn sec" id="btnNext" type="button">▸ BACK TO LIVE ROUND</button>
   `;
@@ -559,33 +623,30 @@ function renderFeed() {
 }
 
 async function syncResultState(integration) {
+  const findRecentResult = (rid) =>
+    state.results.find((row) => Number(row.rid) === Number(rid)) ?? null;
+
   if (state.pending?.rid !== undefined) {
-    const pendingResult = await integration.getRoundResult(state.pending.rid);
+    const pendingResult = await integration.getRoundResult(state.pending.rid)
+      .catch(() => null) ?? findRecentResult(state.pending.rid);
     if (pendingResult) {
       const resolvedResult = {
         ...pendingResult,
         yourPick: state.pending.pick,
       };
-      const summary = getResultSummary(resolvedResult);
 
       persistPending(null);
       clearSelection();
-
-      if (!summary.youWon) {
-        state.activeResult = null;
-        persistLastResult(null);
-        setStatusMessage("Round settled. No win this time, the board is reset for the live round.");
-        return;
-      }
-
       state.activeResult = resolvedResult;
       persistLastResult({ rid: pendingResult.rid, pick: resolvedResult.yourPick });
+      setStatusMessage("");
       return;
     }
   }
 
   if (state.lastResultRef?.rid !== undefined) {
-    const recentResult = await integration.getRoundResult(state.lastResultRef.rid);
+    const recentResult = await integration.getRoundResult(state.lastResultRef.rid)
+      .catch(() => null) ?? findRecentResult(state.lastResultRef.rid);
     if (recentResult) {
       state.activeResult = {
         ...recentResult,
@@ -709,6 +770,29 @@ function bindEvents() {
   });
 
   $("btnSign").addEventListener("click", handleConnectAndEnter);
+
+  const audio = $("bgm");
+  const audioBtn = $("audioBtn");
+  const syncAudioButton = () => {
+    audioBtn.textContent = audio.paused ? "♫ PLAY MUSIC" : "♫ PAUSE MUSIC";
+  };
+
+  audioBtn.addEventListener("click", async () => {
+    try {
+      if (audio.paused) {
+        await audio.play();
+      } else {
+        audio.pause();
+      }
+    } catch {
+      setStatusMessage("Music could not start in this browser session. Try the button again.");
+    }
+    syncAudioButton();
+  });
+
+  audio.addEventListener("play", syncAudioButton);
+  audio.addEventListener("pause", syncAudioButton);
+  syncAudioButton();
 }
 
 function startLoops() {

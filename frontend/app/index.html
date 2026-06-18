@@ -25,11 +25,9 @@
   .tt-root a:hover{filter:brightness(1.08)}
 
   @keyframes tt-foilSheen{
-    0%{transform:translate3d(-18%,0,0);opacity:0}
-    12%{opacity:.18}
-    50%{opacity:.78}
-    88%{opacity:.18}
-    100%{transform:translate3d(78%,0,0);opacity:0}
+    0%{transform:translate3d(-52%,0,0);opacity:.2}
+    50%{transform:translate3d(8%,0,0);opacity:.38}
+    100%{transform:translate3d(74%,0,0);opacity:.2}
   }
   @keyframes tt-scratchWipe{0%{clip-path:inset(0 0 0 0);opacity:1}100%{clip-path:inset(0 0 0 100%);opacity:0}}
   @keyframes tt-decodeIn{0%{opacity:0;filter:blur(5px);transform:scale(.6)}100%{opacity:1;filter:blur(0);transform:scale(1)}}
@@ -61,7 +59,8 @@
   .tt-trust{display:flex;align-items:center;gap:12px;margin-top:10px;border:1px solid var(--line);background:#0c0804;padding:8px 12px;border-radius:4px;flex-wrap:wrap}
   .tt-trust .b{font-size:9px;color:#0a0705;background:var(--green);padding:6px 9px;border-radius:2px;letter-spacing:1px;box-shadow:0 0 10px rgba(69,230,69,.45)}
   .tt-trust .t{font-size:18px;color:var(--accent-dim);flex:1;min-width:280px;line-height:1.15}
-  .tt-verify-btn{font-family:'VT323',monospace;font-size:16px;color:var(--cyan);background:none;border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);padding:5px 11px;border-radius:2px;cursor:pointer;letter-spacing:1px}
+  .tt-verify-btn,.tt-audio-btn{font-family:'VT323',monospace;font-size:16px;color:var(--cyan);background:none;border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);padding:5px 11px;border-radius:2px;cursor:pointer;letter-spacing:1px}
+  .tt-audio-btn{color:var(--accent);border-color:color-mix(in oklab,var(--accent),#050302 52%)}
   .tt-verify{margin-top:8px;border:1px solid color-mix(in oklab,var(--cyan),#050302 60%);background:#0b1013;padding:14px;border-radius:4px}
   .tt-verify h4{margin:0 0 12px;font-size:10px;color:var(--cyan);letter-spacing:1px}
   .tt-verify-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -86,7 +85,7 @@
   .tt-cardcell .face .cnum2{font-family:'Press Start 2P',monospace;font-size:12px;color:var(--accent);text-shadow:0 0 6px color-mix(in oklab,var(--accent),transparent 55%)}
   .tt-cardcell .face .cnt{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--cyan);text-shadow:0 0 5px rgba(54,245,255,.5)}
   .tt-cardcell .cover{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;border-radius:4px;overflow:hidden;background:repeating-linear-gradient(45deg,color-mix(in oklab,var(--accent),#050302 66%) 0 6px,color-mix(in oklab,var(--accent),#050302 80%) 6px 12px);box-shadow:inset 0 1px 0 color-mix(in oklab,var(--accent),transparent 52%),inset 0 -3px 6px rgba(0,0,0,.45);contain:paint;isolation:isolate}
-  .tt-cardcell .cover .csheen{position:absolute;top:-6%;bottom:-6%;left:-112%;width:228%;background:linear-gradient(115deg,transparent 37%,rgba(255,245,220,.05) 43%,rgba(255,245,220,.30) 50%,rgba(255,245,220,.08) 57%,transparent 63%);opacity:0;animation:tt-foilSheen 8.8s ease-in-out infinite;will-change:transform,opacity;transform:translate3d(-18%,0,0);backface-visibility:hidden}
+  .tt-cardcell .cover .csheen{position:absolute;top:-6%;bottom:-6%;left:-90%;width:190%;background:linear-gradient(115deg,transparent 28%,rgba(255,245,220,.08) 40%,rgba(255,245,220,.34) 50%,rgba(255,245,220,.12) 60%,transparent 72%);opacity:.26;animation:tt-foilSheen 4.1s linear infinite;will-change:transform,opacity;transform:translate3d(-52%,0,0);backface-visibility:hidden}
   .tt-cardcell .cover .cnum{position:relative;font-family:'Press Start 2P',monospace;font-size:12px;color:#fff3d8;text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 7px color-mix(in oklab,var(--accent),transparent 35%)}
   .tt-cardcell.avail{cursor:pointer}
   .tt-cardcell.avail:hover{border-color:var(--accent);transform:translateY(-1px)}
@@ -150,6 +149,42 @@
   .tt-share .big{font-family:'Press Start 2P',monospace;font-size:22px;margin:12px 0 7px}
   .tt-share .sub{font-size:16px;color:var(--accent-dim)}
   .tt-share .seal{font-size:13px;color:var(--accent-faint);margin-top:8px}
+  .tt-sharecard{--accent:#ffb000;position:relative;width:100%;aspect-ratio:1200/630;overflow:hidden;border-radius:5px;background:radial-gradient(125% 90% at 50% 0%,#1c1208 0%,#0a0705 58%,#050302 100%);color:var(--accent);margin-top:12px}
+  .tt-sharecard *{box-sizing:border-box}
+  .tt-sharecard-border{position:absolute;inset:12px;border:1px solid color-mix(in oklab,var(--accent),#050302 50%);border-radius:5px;pointer-events:none}
+  .tt-sharecard-pad{position:absolute;inset:0;padding:22px 24px;display:flex;flex-direction:column}
+  .tt-sharecard-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .tt-sharecard-chain{font-size:14px;letter-spacing:2px;color:color-mix(in oklab,var(--accent),#050302 28%);white-space:nowrap}
+  .tt-sharecard-round{font-size:9px;color:#0a0705;background:var(--accent);padding:7px 10px;border-radius:3px;letter-spacing:1px;box-shadow:0 0 12px color-mix(in oklab,var(--accent),transparent 55%)}
+  .tt-sharecard-logo{font-size:25px;letter-spacing:2px;margin-top:12px;color:var(--accent);text-shadow:0 0 8px color-mix(in oklab,var(--accent),transparent 38%),0 0 24px color-mix(in oklab,var(--accent),transparent 60%)}
+  .tt-sharecard-logo .dot{color:var(--red)}
+  .tt-sharecard-mid{flex:1;display:grid;grid-template-columns:1fr 43%;gap:18px;align-items:center;margin-top:12px}
+  .tt-sharecard-label{font-size:16px;letter-spacing:2px;color:color-mix(in oklab,var(--accent),#050302 32%)}
+  .tt-sharecard-big{margin:12px 0 2px}
+  .tt-sharecard-big.win{font-size:31px;color:var(--green);text-shadow:0 0 12px rgba(69,230,69,.6),0 0 28px rgba(69,230,69,.3)}
+  .tt-sharecard-big.loss{font-size:28px;color:var(--red);text-shadow:0 0 12px rgba(255,59,92,.55),0 0 28px rgba(255,59,92,.28)}
+  .tt-sharecard-sub{font-size:10px;color:var(--cyan);text-shadow:0 0 6px rgba(54,245,255,.4);margin-top:10px}
+  .tt-sharecard-note{font-size:18px;color:color-mix(in oklab,var(--accent),#050302 26%);margin-top:10px;line-height:1.05}
+  .tt-sharecard-bhd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:10px}
+  .tt-sharecard-bhd .l{font-size:12px;letter-spacing:2px;color:var(--green);text-shadow:0 0 6px rgba(69,230,69,.4)}
+  .tt-sharecard-bhd .v{font-size:10px;color:var(--green);text-shadow:0 0 6px rgba(69,230,69,.5)}
+  .tt-sharecard-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;width:100%}
+  .tt-sharecard-foot{font-size:13px;color:color-mix(in oklab,var(--accent),#050302 30%);margin-top:9px;display:flex;justify-content:space-between;gap:10px}
+  .tt-sharecard-foot .paid{color:var(--green)}
+  .tt-sharecard-foot .mine{color:var(--cyan)}
+  .tt-sharecard-tag{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid color-mix(in oklab,var(--accent),#050302 60%);padding-top:12px;margin-top:5px;gap:12px}
+  .tt-sharecard-tag .t{font-size:14px;color:color-mix(in oklab,var(--accent),#050302 30%)}
+  .tt-sharecard-tag .d{font-size:9px;color:var(--accent)}
+  .tt-sharecard-scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.22) 3px,rgba(0,0,0,.22) 3px);mix-blend-mode:multiply}
+  .tt-sharecard-vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(125% 100% at 50% 50%,rgba(0,0,0,0) 58%,rgba(0,0,0,.55) 100%)}
+  .tt-mini-card{position:relative;display:flex;align-items:center;justify-content:center;border-radius:3px;border:1px solid color-mix(in oklab,var(--accent),#050302 64%);background:repeating-linear-gradient(45deg,color-mix(in oklab,var(--accent),#050302 74%) 0 4px,color-mix(in oklab,var(--accent),#050302 84%) 4px 8px);overflow:hidden;aspect-ratio:1/1}
+  .tt-mini-card span{font-family:'Press Start 2P',monospace;font-size:6px;color:color-mix(in oklab,var(--accent),#050302 30%);text-shadow:0 1px 1px rgba(0,0,0,.6)}
+  .tt-mini-card.dimmed{opacity:.5}
+  .tt-mini-card.mine{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan),0 0 8px rgba(54,245,255,.45);background:#0c1417}
+  .tt-mini-card.mine span{color:#9fe9ff}
+  .tt-mini-card.win{border-color:var(--green);background:linear-gradient(#16361a,#0c220f);box-shadow:0 0 12px rgba(69,230,69,.6),inset 0 0 0 1px var(--green)}
+  .tt-mini-card.win span{color:#9dffa0;text-shadow:0 0 6px rgba(69,230,69,.7)}
+  .tt-mini-card.win.mine{box-shadow:0 0 14px rgba(69,230,69,.7),inset 0 0 0 2px var(--green)}
 
   .tt-lb{margin-top:14px}
   .tt-lb-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:6px}
@@ -191,6 +226,7 @@
   <div class="tt-trust">
     <span class="b tt-px">✓ PROVABLY FAIR</span>
     <span class="t">Encrypted choices powered by Inco Lightning — any number of players can pick the same card and no pick is visible until the round closes</span>
+    <button class="tt-audio-btn" id="audioBtn" type="button">♫ PLAY MUSIC</button>
     <button class="tt-verify-btn" id="verifyBtn" type="button">HOW IT WORKS ↗</button>
   </div>
 
@@ -277,6 +313,8 @@
   <div class="tt-scan"></div>
   <div class="tt-vig"></div>
 </div>
+
+<audio id="bgm" preload="none" loop src="/two-thirds-cipher.mp3"></audio>
 
 <script type="module" src="/src/main.js"></script>
 </body>

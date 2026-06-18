@@ -24,7 +24,7 @@ const { Lightning } = require("@inco/js/lite");
 
 const {
   RPC_URL, SETTLER_PRIVATE_KEY, GAME_ADDRESS,
-  CHAIN_ID, INCO_PEPPER = "mainnet", TICK_SECONDS = "30", PORT = "",
+  CHAIN_ID, INCO_PEPPER = "mainnet", TICK_SECONDS = "1", PORT = "",
 } = process.env;
 
 if (!RPC_URL || !SETTLER_PRIVATE_KEY || !GAME_ADDRESS || !CHAIN_ID) {
