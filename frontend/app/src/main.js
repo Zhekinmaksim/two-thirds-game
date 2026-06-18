@@ -417,6 +417,9 @@ function renderResultPanel() {
   const shareText = summary.youWon
     ? `I won ${usd(result.payPerWinner)} on TWO·THIRDS. My encrypted card #${yourPick} landed closest to ${result.target}.`
     : `Played card #${yourPick} on TWO·THIRDS. 2/3 target landed on ${result.target}. So close, next one is mine.`;
+  const telegramText = summary.youWon
+    ? `I won ${usd(result.payPerWinner)} on TWO·THIRDS.`
+    : `Played card #${yourPick} on TWO·THIRDS.`;
   const sharePageUrl = buildSharePageUrl(result, summary);
   const winLabel = summary.winNums.length
     ? `#${summary.winNums[0]}${summary.winNums.length > 1 ? ` +${summary.winNums.length - 1}` : ""}`
@@ -446,12 +449,20 @@ function renderResultPanel() {
       · <span class="k">WINNER PAYOUT</span> <span class="pay">${usd(result.payPerWinner)}</span>
       · ${summary.winnersPlayers} ${summary.winnersPlayers === 1 ? "winner" : "winners"}
     </div>
-    <button class="tt-btn" id="btnShare" type="button">▸ SHARE TO 𝕏</button>
+    <div class="tt-actions">
+      <button class="tt-btn" id="btnShare" type="button">▸ SHARE TO 𝕏</button>
+      <button class="tt-btn cyan" id="btnShareTelegram" type="button">▸ SHARE TO TG</button>
+    </div>
     <button class="tt-btn sec" id="btnNext" type="button">▸ BACK TO LIVE ROUND</button>
   `;
 
   $("btnShare").onclick = () => {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(sharePageUrl)}`;
+    window.open(url, "_blank", "noopener");
+  };
+
+  $("btnShareTelegram").onclick = () => {
+    const url = `https://t.me/share/url?url=${encodeURIComponent(sharePageUrl)}&text=${encodeURIComponent(telegramText)}`;
     window.open(url, "_blank", "noopener");
   };
 

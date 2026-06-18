@@ -122,8 +122,11 @@
   .tt-btn:hover{filter:brightness(1.08)}
   .tt-btn:active{transform:translateY(2px);border-bottom-width:2px}
   .tt-btn:disabled{filter:grayscale(.6) brightness(.55);cursor:not-allowed}
+  .tt-btn.cyan{background:var(--cyan);border-bottom-color:#12707c}
   .tt-btn.red{background:var(--red);border-bottom-color:#7a1226}
   .tt-btn.sec{margin-top:8px}
+  .tt-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+  .tt-actions .tt-btn{margin-top:0}
   .tt-wait{text-align:center;padding:14px 0}
   .tt-wait .c{font-family:'Press Start 2P',monospace;font-size:32px;color:var(--cyan);text-shadow:0 0 8px rgba(54,245,255,.6)}
   .tt-wait .l{font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.6;color:var(--cyan);margin-top:14px}
@@ -209,6 +212,7 @@
   }
   @media (max-width:760px){
     .tt-grid{grid-template-columns:1fr}
+    .tt-actions{grid-template-columns:1fr}
   }
 </style>
 </head>
