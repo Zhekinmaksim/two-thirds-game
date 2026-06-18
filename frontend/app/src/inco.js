@@ -86,6 +86,7 @@ const GAME_ABI = parseAbi([
   "function getPlayers(uint256 rid) view returns (address[])",
   "function settle(uint256[] values, bytes[][] signatures)",
   "event Settled(uint256 indexed rid, uint16 target, uint16 avgX1, uint256 netPot, uint256 payPerWinner, uint256 winners)",
+  "event RolledOver(uint256 indexed rid, uint256 carriedPot, uint256 players)",
   "event RoundDecrypted(uint256 indexed rid, uint16[] numbers)",
 ]);
 
@@ -191,6 +192,7 @@ async function hydrateSettledLog(log) {
 
   const rid = Number(log.args.rid);
   const base = {
+    kind: "settled",
     rid,
     target: Number(log.args.target),
     avg: Number(log.args.avgX1),
@@ -255,6 +257,38 @@ async function hydrateSettledLog(log) {
     const divisor = 10_000n - rakeBps;
     base.grossPot = divisor > 0n ? (BigInt(base.netPot) * 10_000n) / divisor : BigInt(base.netPot);
     base.rake = base.grossPot - BigInt(base.netPot);
+  }
+
+  resultCache.set(cacheKey, base);
+  return base;
+}
+
+async function hydrateRolledOverLog(log) {
+  const cacheKey = `${log.transactionHash}:rollover:${log.args.rid}`;
+  if (resultCache.has(cacheKey)) return resultCache.get(cacheKey);
+
+  const base = {
+    kind: "rolledOver",
+    rid: Number(log.args.rid),
+    carriedPot: log.args.carriedPot,
+    grossPot: log.args.carriedPot,
+    netPot: log.args.carriedPot,
+    rake: 0n,
+    payPerWinner: 0n,
+    winners: 0,
+    playersCount: Number(log.args.players),
+    winnerAddresses: [],
+    guesses: [],
+    players: [],
+    target: 0,
+    avg: 0,
+    txHash: log.transactionHash,
+  };
+
+  try {
+    base.players = await getPlayersForRound(log.args.rid);
+  } catch {
+    // keep partial data if player lookup is unavailable
   }
 
   resultCache.set(cacheKey, base);
@@ -467,9 +501,13 @@ export async function getGameMeta() {
 }
 
 export async function getRoundResult(rid) {
-  const logs = await collectLogs("Settled", { rid, limit: 1 });
-  if (!logs.length) return null;
-  return hydrateSettledLog(logs[logs.length - 1]);
+  const settledLogs = await collectLogs("Settled", { rid, limit: 1 });
+  if (settledLogs.length) return hydrateSettledLog(settledLogs[settledLogs.length - 1]);
+
+  const rolledLogs = await collectLogs("RolledOver", { rid, limit: 1 });
+  if (rolledLogs.length) return hydrateRolledOverLog(rolledLogs[rolledLogs.length - 1]);
+
+  return null;
 }
 
 export async function getRecentResults(limit = 10) {
