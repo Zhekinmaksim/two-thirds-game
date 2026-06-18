@@ -24,7 +24,7 @@ const { Lightning } = require("@inco/js/lite");
 
 const {
   RPC_URL, SETTLER_PRIVATE_KEY, GAME_ADDRESS,
-  CHAIN_ID, INCO_PEPPER = "mainnet", TICK_SECONDS = "1", PORT = "",
+  CHAIN_ID, INCO_PEPPER = "mainnet", TICK_SECONDS = "1", PORT = "8080",
 } = process.env;
 
 if (!RPC_URL || !SETTLER_PRIVATE_KEY || !GAME_ADDRESS || !CHAIN_ID) {
@@ -134,27 +134,25 @@ async function tick() {
   }
 }
 
-if (PORT) {
-  nodeHttp.createServer((req, res) => {
-    if (req.url !== "/healthz") {
-      res.writeHead(404, { "content-type": "application/json" });
-      res.end(JSON.stringify({ ok: false, error: "not found" }));
-      return;
-    }
+nodeHttp.createServer((req, res) => {
+  if (req.url !== "/healthz") {
+    res.writeHead(404, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: "not found" }));
+    return;
+  }
 
-    res.writeHead(state.status === "error" ? 500 : 200, { "content-type": "application/json" });
-    res.end(JSON.stringify({
-      ok: state.status !== "error",
-      status: state.status,
-      settler: account.address,
-      game: GAME_ADDRESS,
-      tickSeconds: Number(TICK_SECONDS),
-      ...state,
-    }));
-  }).listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`health endpoint on :${PORT}/healthz`);
-  });
-}
+  res.writeHead(state.status === "error" ? 500 : 200, { "content-type": "application/json" });
+  res.end(JSON.stringify({
+    ok: state.status !== "error",
+    status: state.status,
+    settler: account.address,
+    game: GAME_ADDRESS,
+    tickSeconds: Number(TICK_SECONDS),
+    ...state,
+  }));
+}).listen(Number(PORT), "0.0.0.0", () => {
+  console.log(`health endpoint on :${PORT}/healthz`);
+});
 
 console.log(`keeper up. settler=${account.address} game=${GAME_ADDRESS} every ${TICK_SECONDS}s`);
 tick();
