@@ -437,7 +437,7 @@ function renderResultPanel() {
     <div class="tt-pot">
       <span class="k">POT</span> ${usd(result.grossPot ?? result.netPot)}
       · <span class="k">RAKE</span> ${usd(result.rake ?? 0n)}
-      · <span class="k">PAY/WIN</span> <span class="pay">${usd(result.payPerWinner)}</span>
+      · <span class="k">WINNER PAYOUT</span> <span class="pay">${usd(result.payPerWinner)}</span>
       · ${summary.winnersPlayers} ${summary.winnersPlayers === 1 ? "winner" : "winners"}
     </div>
     <div class="tt-share" style="border:1px solid ${summary.youWon ? "color-mix(in oklab,var(--green),#050302 50%)" : "color-mix(in oklab,var(--red),#050302 50%)"};background:${summary.youWon ? "linear-gradient(135deg,#0c1308,#0a0705)" : "linear-gradient(135deg,#150a0c,#0a0705)"}">

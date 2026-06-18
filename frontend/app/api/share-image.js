@@ -39,7 +39,7 @@ export default async function handler(request, response) {
     ? `${winners} winner${winners === "1" ? "" : "s"} split ${pot}`
     : `off by ${off} · next one is mine`;
   const big = won ? `WON ${pay}` : `CARD #${card}`;
-  const sideLabel = won ? "PAYOUT" : "TARGET";
+  const sideLabel = won ? "WINNER PAYOUT" : "TARGET";
   const sideValue = won ? pay : `#${target}`;
   const averageDisplay = Number.isFinite(readNumber(url, "avg", Number(avg))) ? avg : "0";
 

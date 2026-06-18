@@ -68,8 +68,7 @@
   .tt-step{border-left:2px solid var(--cyan);padding-left:10px}
   .tt-step b{display:block;font-size:10px;color:var(--cyan);margin-bottom:6px}
   .tt-step p{margin:0;font-size:16px;color:var(--accent-dim)}
-  .tt-verify-note{margin-top:12px;padding-top:10px;border-top:1px dashed color-mix(in oklab,var(--cyan),#050302 68%);font-size:15px;color:var(--accent-faint)}
-  .tt-verify-note b{color:var(--cyan);font-weight:400}
+  .tt-verify-note{margin-top:12px;padding-top:10px;border-top:1px dashed color-mix(in oklab,var(--cyan),#050302 68%);font-size:15px;color:var(--accent-dim);line-height:1.2}
   .tt-verify-tx{margin-top:12px;border-top:1px dashed color-mix(in oklab,var(--cyan),#050302 60%);padding-top:9px;font-size:16px;color:var(--accent-faint)}
   .tt-verify-tx b{color:var(--cyan);font-family:inherit;font-weight:400}
   .tt-verify-link{color:var(--cyan)}
@@ -202,7 +201,7 @@
       <div class="tt-step"><b class="tt-px">2 · ENCRYPT</b><p>Approve + enter() on Base — your $1 USDC joins the pot, choice sealed by Inco.</p></div>
       <div class="tt-step"><b class="tt-px">3 · SETTLE</b><p>Cards decrypt, ⅔×avg is computed, the closest number splits the pot among its holders.</p></div>
     </div>
-    <div class="tt-verify-note"><b>Automatic payout.</b> No claim required, winners are paid by the contract during settlement.</div>
+    <div class="tt-verify-note">Automatic payout. No claim required, winners are paid by the contract during settlement.</div>
     <div class="tt-verify-tx">
       contract <a class="tt-verify-link" id="contractLink" href="#" target="_blank" rel="noreferrer"><b id="contractShort">0x…</b></a>
       · chain <b id="chainLabel">Base · 8453</b>
