@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 // Inco Lightning mainnet library.
 //   install:  npm i @inco/lightning
 //   inco executor (mainnet): 0x4b9911b0191B0b6a6eA8F2Ed562e20Cff5AC8624
-import {euint256, ebool, e} from "@inco/lightning/Lib.sol";
+import {euint256, e} from "@inco/lightning/Lib.sol";
 
 /**
  * TwoThirds — a confidential "guess 2/3 of the average" game.
@@ -50,7 +50,7 @@ contract TwoThirds {
 
     uint16  public constant MAX_GUESS   = 63;   // 64 cards, numbered 0..63
     uint16  public constant MAX_RAKE    = 1000; // 10%
-    uint16  public constant MIN_PLAYERS = 2;    // below this, the pot rolls into the next round
+    uint16  public constant MIN_PLAYERS = 2;    // a lone player is refunded automatically
     uint16  public constant MAX_PLAYERS = 100;  // bounded so settle() remains safe on mainnet
 
     // ---- round state ----
@@ -64,6 +64,7 @@ contract TwoThirds {
     mapping(uint256 => Round) private rounds;
     mapping(uint256 => mapping(address => bool))     public entered;     // rid => player => joined?
     mapping(uint256 => mapping(address => euint256)) private guessOf;    // rid => player => encrypted guess
+    mapping(uint256 => mapping(address => uint256))  private stakeOf;    // rid => player => entry fee paid
     mapping(uint256 => bool) public decryptionAuthorized;
     mapping(address => uint256) public pendingPayouts;
     uint256 public pendingTreasury;
@@ -76,6 +77,7 @@ contract TwoThirds {
     // ---- events ----
     event Entered(uint256 indexed rid, address indexed player, uint256 pot);
     event Settled(uint256 indexed rid, uint16 target, uint16 avgX1, uint256 netPot, uint256 payPerWinner, uint256 winners);
+    event RoundRefunded(uint256 indexed rid, address indexed player, uint256 amount, uint256 carriedPot);
     event RolledOver(uint256 indexed rid, uint256 carriedPot, uint256 players);
     event RoundStarted(uint256 indexed rid, uint64 closesAt, uint256 seedPot);
     event ParamsChanged(uint256 entryFee, uint16 rakeBps, uint64 roundDuration, address treasury);
@@ -132,6 +134,7 @@ contract TwoThirds {
         euint256 g = e.newEuint256(ciphertext, msg.sender);
         g.allowThis();                  // this contract may reference the handle
         guessOf[roundId][msg.sender] = g;
+        stakeOf[roundId][msg.sender] = entryFee;
 
         entered[roundId][msg.sender] = true;
         r.players.push(msg.sender);
@@ -168,17 +171,32 @@ contract TwoThirds {
         require(!r.settled, "settled");
 
         uint256 n = r.players.length;
-        require(values.length == n && signatures.length == n, "len mismatch");
-
         r.settled = true;
 
-        // not enough players: roll the whole pot into the next round
+        // An empty round simply preserves any seeded dust for the next round.
         if (n < MIN_PLAYERS) {
-            uint256 carried = r.pot;
-            emit RolledOver(rid, carried, n);
-            _startRound(carried);
+            if (n == 0) {
+                uint256 emptyCarry = r.pot;
+                emit RolledOver(rid, emptyCarry, n);
+                _startRound(emptyCarry);
+                return;
+            }
+
+            address player = r.players[0];
+            uint256 refundAmount = stakeOf[rid][player];
+            uint256 carryAfterRefund = r.pot - refundAmount;
+
+            if (refundAmount > 0 && !_tryTransfer(token, player, refundAmount)) {
+                pendingPayouts[player] += refundAmount;
+                emit PayoutQueued(rid, player, refundAmount);
+            }
+
+            emit RoundRefunded(rid, player, refundAmount, carryAfterRefund);
+            _startRound(carryAfterRefund);
             return;
         }
+
+        require(values.length == n && signatures.length == n, "len mismatch");
 
         // verify each attested guess and accumulate the (clamped) sum
         uint16[] memory guesses = new uint16[](n);

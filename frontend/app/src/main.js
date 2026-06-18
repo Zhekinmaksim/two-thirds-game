@@ -175,8 +175,8 @@ function renderVerifyLinks() {
   if (!config?.game) return;
 
   const explorerBase = getExplorerBase(config);
-  const activeSettledTx = state.activeResult?.kind === "settled" ? state.activeResult.txHash : null;
-  const txHash = state.results[0]?.txHash ?? activeSettledTx ?? null;
+  const activeTx = state.activeResult?.txHash ?? null;
+  const txHash = activeTx ?? state.results[0]?.txHash ?? null;
 
   if (txHash) {
     $("lastTx").textContent = shortTx(txHash);
@@ -199,6 +199,14 @@ function renderMeta() {
 }
 
 function renderStatus() {
+  if (state.activeResult?.kind === "refunded") {
+    $("sRound").textContent = formatRound(state.activeResult.rid);
+    $("sPot").textContent = usd(state.activeResult.refundAmount ?? 0n);
+    $("sPlayers").textContent = `1 / ${MAX_PLAYERS}`;
+    $("sTimer").textContent = "REFUNDED";
+    return;
+  }
+
   if (state.activeResult?.kind === "rolledOver") {
     $("sRound").textContent = formatRound(state.activeResult.rid);
     $("sPot").textContent = usd(state.activeResult.carriedPot ?? state.activeResult.grossPot ?? 0n);
@@ -293,6 +301,7 @@ function renderBoard() {
   const board = $("board");
   const resultKind = state.activeResult?.kind ?? null;
   const reveal = resultKind === "settled";
+  const refunded = resultKind === "refunded";
   const rolledOver = resultKind === "rolledOver";
   const personalPick = getPersonalPick();
   const summary = reveal ? getResultSummary(state.activeResult) : null;
@@ -300,9 +309,11 @@ function renderBoard() {
   board.className = `tt-board${reveal ? " is-rev" : ""}`;
   $("boardHd").textContent = reveal
     ? "▸ ROUND DECRYPTED — WINNER PAID"
+    : refunded
+      ? "▸ ENTRY AUTO-REFUNDED — NOT ENOUGH PLAYERS"
     : rolledOver
       ? "▸ ROUND ROLLED OVER — NOT ENOUGH PLAYERS"
-    : isPendingRoundLive()
+      : isPendingRoundLive()
       ? "▸ ENTRY LOCKED — WAITING FOR CLOSE"
       : "▸ CHOOSE ONE OF 64 ENCRYPTED NUMBERS";
 
@@ -315,7 +326,7 @@ function renderBoard() {
     let ring = "";
     if (reveal) {
       cls = `${mine ? " mine" : ""}${win ? " win" : ""}`.trim();
-    } else if (rolledOver && mine) {
+    } else if ((refunded || rolledOver) && mine) {
       cls = "mine";
       ring = '<span class="ringtag">YOU</span>';
     } else if (isPendingRoundLive() && mine) {
@@ -415,6 +426,11 @@ function renderControl() {
 
 function renderResultPanel() {
   const result = state.activeResult;
+  if (result?.kind === "refunded") {
+    renderRefundedPanel(result);
+    return;
+  }
+
   if (result?.kind === "rolledOver") {
     renderRolledOverPanel(result);
     return;
@@ -531,6 +547,46 @@ function renderRolledOverPanel(result) {
       · <span class="k">NEXT ROUND STARTS WITH</span> <span class="pay" style="color:var(--accent);text-shadow:0 0 8px rgba(255,176,0,.45)">${usd(result.carriedPot ?? result.grossPot ?? 0n)}</span>
     </div>
     <div class="tt-hint" style="margin-top:12px">This round had fewer than 2 players, so the contract rolled the full pot into the next round automatically.</div>
+    <button class="tt-btn sec" id="btnNext" type="button">▸ BACK TO LIVE ROUND</button>
+  `;
+
+  $("btnNext").onclick = () => {
+    state.activeResult = null;
+    persistLastResult(null);
+    clearSelection();
+    renderBoard();
+    renderControl();
+    renderVerifyLinks();
+  };
+}
+
+function renderRefundedPanel(result) {
+  const yourPick = Number(result.yourPick);
+  const carriedPot = BigInt(result.carriedPot ?? 0n);
+
+  $("after").innerHTML = `
+    <div class="tt-verdict tt-px" style="color:var(--green);text-shadow:0 0 8px rgba(69,230,69,.45)">ENTRY AUTO-REFUNDED</div>
+    <div class="tt-twocard">
+      <div class="c" style="border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);background:rgba(54,245,255,.06)">
+        <div class="lbl">YOUR CARD</div>
+        <div class="v" style="color:var(--cyan);text-shadow:0 0 9px rgba(54,245,255,.5)">#${yourPick}</div>
+      </div>
+      <div class="c" style="border:1px solid color-mix(in oklab,var(--green),#050302 55%);background:rgba(69,230,69,.06)">
+        <div class="lbl">REFUND SENT</div>
+        <div class="v" style="color:var(--green);text-shadow:0 0 9px rgba(69,230,69,.5)">${usd(result.refundAmount ?? 0n)}</div>
+      </div>
+    </div>
+    <div class="tt-target">
+      <small>FEWER THAN 2 PLAYERS ENTERED</small>
+      <div class="v" style="color:var(--green);text-shadow:0 0 10px rgba(69,230,69,.55),0 0 24px rgba(69,230,69,.25)">DEPOSIT RETURNED</div>
+    </div>
+    <div class="tt-pot">
+      <span class="k">ROUND</span> ${formatRound(result.rid)}
+      · <span class="k">STATUS</span> 1 player entered
+      · <span class="k">RETURNED</span> <span class="pay" style="color:var(--green);text-shadow:0 0 8px rgba(69,230,69,.45)">${usd(result.refundAmount ?? 0n)}</span>
+      ${carriedPot > 0n ? `· <span class="k">SEEDED NEXT ROUND</span> ${usd(carriedPot)}` : ""}
+    </div>
+    <div class="tt-hint" style="margin-top:12px">This round closed with a single entrant, so the contract returned the deposit automatically instead of rolling it into the next round.</div>
     <button class="tt-btn sec" id="btnNext" type="button">▸ BACK TO LIVE ROUND</button>
   `;
 

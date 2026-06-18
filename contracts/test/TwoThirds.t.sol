@@ -130,24 +130,24 @@ contract TwoThirdsTest is Test {
         assertEq(token.balanceOf(late), FEE, "no fee taken on rejected entry");
     }
 
-    /// With fewer than MIN_PLAYERS (2), settle rolls the pot into the next round.
-    function test_Rollover_UnderMinPlayers() public {
+    /// With fewer than MIN_PLAYERS (2), a lone player gets refunded automatically.
+    function test_Refund_UnderMinPlayers() public {
         address p1 = address(0xA1);
         _enter(p1, 40);
         _close();
 
-        uint256[] memory values = new uint256[](1);
-        values[0] = 40;
-        game.settle(values, _sigs(1));
+        uint256[] memory values = new uint256[](0);
+        bytes[][] memory sigs = new bytes[][](0);
+        game.settle(values, sigs);
 
         (, bool settled1, , ) = game.getRound(1);
         assertTrue(settled1, "round 1 marked settled");
         assertEq(game.roundId(), 2, "advanced to round 2");
 
         (, , uint256 pot2, ) = game.getRound(2);
-        assertEq(pot2, FEE, "pot carried into round 2");
-        assertEq(token.balanceOf(p1), 0, "no payout, stake carried");
-        assertEq(token.balanceOf(treasury), 0, "no rake on rollover");
+        assertEq(pot2, 0, "next round starts empty after refund");
+        assertEq(token.balanceOf(p1), FEE, "single entrant gets deposit back");
+        assertEq(token.balanceOf(treasury), 0, "no rake on refund");
     }
 
     /// Bonus: an empty round also rolls over cleanly.
@@ -160,6 +160,38 @@ contract TwoThirdsTest is Test {
         assertEq(game.roundId(), 2, "advanced");
         (, , uint256 pot2, ) = game.getRound(2);
         assertEq(pot2, 0, "empty pot carried");
+    }
+
+    function test_Refund_UnderMinPlayers_PreservesSeededDust() public {
+        address p1 = address(0x11);
+        address p2 = address(0x22);
+        address p3 = address(0x33);
+        address p4 = address(0x44);
+        address solo = address(0x55);
+
+        _enter(p1, 0);
+        _enter(p2, 0);
+        _enter(p3, 0);
+        _enter(p4, 63);
+        _close();
+
+        uint256[] memory values = new uint256[](4);
+        values[0] = 0; values[1] = 0; values[2] = 0; values[3] = 63;
+        game.settle(values, _sigs(4));
+
+        (, , uint256 seededPot, ) = game.getRound(2);
+        assertEq(seededPot, 2, "dust seeds the next round");
+
+        _enter(solo, 22);
+        _close();
+
+        uint256[] memory refundValues = new uint256[](0);
+        bytes[][] memory refundSigs = new bytes[][](0);
+        game.settle(refundValues, refundSigs);
+
+        (, , uint256 pot3, ) = game.getRound(3);
+        assertEq(token.balanceOf(solo), FEE, "solo entrant refunded");
+        assertEq(pot3, 2, "seeded dust remains for the next round");
     }
 
     function test_SettlerDecryption_OnlyAuthorizedAfterClose() public {

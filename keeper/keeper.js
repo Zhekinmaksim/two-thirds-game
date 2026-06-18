@@ -2,8 +2,9 @@
 //
 // Every TICK seconds it checks the current round. Once the round has closed it
 // asks Inco for an attested decryption of every guess and submits settle(). Even
-// an empty/under-min round is settled, which rolls it over and starts a fresh one,
-// so there is always a live round.
+// an empty round is settled into the next round, while a single-player round is
+// auto-refunded without any decrypt step, so there is always a live round.
+//
 //
 // Run:  cp .env.example .env && edit, then  `node keeper.js`
 //
@@ -104,10 +105,9 @@ async function tick() {
     state.lastError = null;
     console.log(`round #${rid} closed with ${playerCount} players -> settling...`);
 
-    // empty / under-min rounds still settle (contract rolls them over)
     let values = [];
     let signatures = [];
-    if (Number(playerCount) > 0) {
+    if (Number(playerCount) >= 2) {
       const authTx = await game.write.authorizeSettlerDecryption([rid], { account });
       await publicClient.waitForTransactionReceipt({ hash: authTx });
       const handles = await game.read.guessHandles([rid]);

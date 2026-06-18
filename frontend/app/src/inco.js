@@ -18,7 +18,7 @@ const DEFAULTS = {
   chainId: 8453,
   chainName: "Base",
   rpcUrl: "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
-  game: "0x6cEfdD7e6E2E0e5ACFBfDD2260697b47CBe851c6",
+  game: "0x4163b226f978E071FD45bc913bf9EbC8ed2d5860",
   token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 };
 
@@ -86,6 +86,7 @@ const GAME_ABI = parseAbi([
   "function getPlayers(uint256 rid) view returns (address[])",
   "function settle(uint256[] values, bytes[][] signatures)",
   "event Settled(uint256 indexed rid, uint16 target, uint16 avgX1, uint256 netPot, uint256 payPerWinner, uint256 winners)",
+  "event RoundRefunded(uint256 indexed rid, address indexed player, uint256 amount, uint256 carriedPot)",
   "event RolledOver(uint256 indexed rid, uint256 carriedPot, uint256 players)",
   "event RoundDecrypted(uint256 indexed rid, uint16[] numbers)",
 ]);
@@ -290,6 +291,34 @@ async function hydrateRolledOverLog(log) {
   } catch {
     // keep partial data if player lookup is unavailable
   }
+
+  resultCache.set(cacheKey, base);
+  return base;
+}
+
+async function hydrateRefundedLog(log) {
+  const cacheKey = `${log.transactionHash}:refund:${log.args.rid}`;
+  if (resultCache.has(cacheKey)) return resultCache.get(cacheKey);
+
+  const base = {
+    kind: "refunded",
+    rid: Number(log.args.rid),
+    player: log.args.player,
+    refundAmount: log.args.amount,
+    carriedPot: log.args.carriedPot,
+    grossPot: log.args.amount,
+    netPot: log.args.amount,
+    rake: 0n,
+    payPerWinner: 0n,
+    winners: 0,
+    playersCount: 1,
+    winnerAddresses: [],
+    guesses: [],
+    players: [log.args.player],
+    target: 0,
+    avg: 0,
+    txHash: log.transactionHash,
+  };
 
   resultCache.set(cacheKey, base);
   return base;
@@ -503,6 +532,9 @@ export async function getGameMeta() {
 export async function getRoundResult(rid) {
   const settledLogs = await collectLogs("Settled", { rid, limit: 1 });
   if (settledLogs.length) return hydrateSettledLog(settledLogs[settledLogs.length - 1]);
+
+  const refundedLogs = await collectLogs("RoundRefunded", { rid, limit: 1 });
+  if (refundedLogs.length) return hydrateRefundedLog(refundedLogs[refundedLogs.length - 1]);
 
   const rolledLogs = await collectLogs("RolledOver", { rid, limit: 1 });
   if (rolledLogs.length) return hydrateRolledOverLog(rolledLogs[rolledLogs.length - 1]);

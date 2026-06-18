@@ -40,8 +40,8 @@ two-thirds-game/
 
 ## Current Mainnet State
 
-- Frontend production URL: `https://two-thirds-game.vercel.app`
-- Mainnet contract: `0x6cEfdD7e6E2E0e5ACFBfDD2260697b47CBe851c6`
+- Frontend production URL: `https://twothirds.fun`
+- Mainnet contract: `0x4163b226f978E071FD45bc913bf9EbC8ed2d5860`
 - Network: `Base`
 - Mainnet keeper Fly app: `two-thirds-keeper-mainnet`
 - Testnet keeper Fly app: `two-thirds-keeper-testnet`
@@ -56,6 +56,7 @@ The contract uses direct payouts first, with fallback credits if a transfer fail
 - The target is computed as `floor(2 * sum(guesses) / (3 * playerCount))`.
 - The closest wallet or wallets win.
 - The contract attempts immediate winner payouts during `settle()`.
+- If a round closes with exactly one player, that deposit is returned automatically instead of rolling into the next round.
 - If a payout or treasury transfer fails, the owed amount is queued as claimable credit instead of freezing the round.
 - Any remainder from integer division rolls into the next round.
 
@@ -91,7 +92,7 @@ Required keeper env:
 ```bash
 RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
 SETTLER_PRIVATE_KEY=
-GAME_ADDRESS=0x6cEfdD7e6E2E0e5ACFBfDD2260697b47CBe851c6
+GAME_ADDRESS=0x4163b226f978E071FD45bc913bf9EbC8ed2d5860
 CHAIN_ID=8453
 INCO_PEPPER=mainnet
 TICK_SECONDS=1
@@ -114,7 +115,7 @@ VITE_INCO_PEPPER=mainnet
 VITE_CHAIN_ID=8453
 VITE_CHAIN_NAME=Base
 VITE_RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
-VITE_GAME_ADDRESS=0x6cEfdD7e6E2E0e5ACFBfDD2260697b47CBe851c6
+VITE_GAME_ADDRESS=0x4163b226f978E071FD45bc913bf9EbC8ed2d5860
 VITE_TOKEN_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 ```
 
