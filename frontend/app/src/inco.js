@@ -18,7 +18,7 @@ const DEFAULTS = {
   chainId: 8453,
   chainName: "Base",
   rpcUrl: "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
-  game: "0x0e9D534dE28045A33D8aB94Dbebc6822816ABe1B",
+  game: "0x6cEfdD7e6E2E0e5ACFBfDD2260697b47CBe851c6",
   token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 };
 

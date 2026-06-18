@@ -16,7 +16,7 @@ import {TwoThirds, IERC20} from "../src/TwoThirds.sol";
  * Optional (sensible defaults shown):
  *   ENTRY_FEE          1000000   (1 USDC, 6 decimals)
  *   RAKE_BPS           500       (5%)
- *   ROUND_DURATION     3600      (1 hour, in seconds)
+ *   ROUND_DURATION     1200      (20 minutes, in seconds)
  *
  * Run:
  *   forge script script/Deploy.s.sol:Deploy --rpc-url $RPC_URL --broadcast -vvvv
@@ -29,7 +29,7 @@ contract Deploy is Script {
         address settler       = vm.envAddress("SETTLER_ADDRESS");
         uint256 entryFee      = vm.envOr("ENTRY_FEE", uint256(1_000_000));
         uint16  rakeBps       = uint16(vm.envOr("RAKE_BPS", uint256(500)));
-        uint64  roundDuration = uint64(vm.envOr("ROUND_DURATION", uint256(3600)));
+        uint64  roundDuration = uint64(vm.envOr("ROUND_DURATION", uint256(1200)));
 
         vm.startBroadcast(pk);
         TwoThirds game = new TwoThirds(IERC20(token), entryFee, rakeBps, roundDuration, treasury, settler);

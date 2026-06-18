@@ -8,7 +8,7 @@ Players pay a fixed `$1` entry fee, submit an encrypted pick from `0..63`, and t
 
 - Fixed entry fee: `$1 USDC`
 - Max players per round: `100`
-- Default round duration: `1 hour`
+- Default round duration: `20 minutes`
 - Minimum players to settle a live game: `2`
 - House rake: configurable, currently `5%`
 - Winner payout: sent automatically by the contract inside `settle()`
@@ -41,7 +41,7 @@ two-thirds-game/
 ## Current Mainnet State
 
 - Frontend production URL: `https://two-thirds-game.vercel.app`
-- Mainnet contract: `0x0e9D534dE28045A33D8aB94Dbebc6822816ABe1B`
+- Mainnet contract: `0x6cEfdD7e6E2E0e5ACFBfDD2260697b47CBe851c6`
 - Network: `Base`
 - Mainnet keeper Fly app: `two-thirds-keeper-mainnet`
 - Testnet keeper Fly app: `two-thirds-keeper-testnet`
@@ -91,7 +91,7 @@ Required keeper env:
 ```bash
 RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
 SETTLER_PRIVATE_KEY=
-GAME_ADDRESS=0x0e9D534dE28045A33D8aB94Dbebc6822816ABe1B
+GAME_ADDRESS=0x6cEfdD7e6E2E0e5ACFBfDD2260697b47CBe851c6
 CHAIN_ID=8453
 INCO_PEPPER=mainnet
 TICK_SECONDS=1
@@ -114,7 +114,7 @@ VITE_INCO_PEPPER=mainnet
 VITE_CHAIN_ID=8453
 VITE_CHAIN_NAME=Base
 VITE_RPC_URL=https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a
-VITE_GAME_ADDRESS=0x0e9D534dE28045A33D8aB94Dbebc6822816ABe1B
+VITE_GAME_ADDRESS=0x6cEfdD7e6E2E0e5ACFBfDD2260697b47CBe851c6
 VITE_TOKEN_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 ```
 
