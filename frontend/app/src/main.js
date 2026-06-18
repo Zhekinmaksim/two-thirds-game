@@ -388,13 +388,13 @@ function renderResultPanel() {
     ? summary.winnersPlayers > 1
       ? "YOU SPLIT THE POT"
       : "YOU WIN"
-    : `NO WIN · OFF BY ${summary.off ?? "—"}`;
+    : `NO WIN - OFF BY ${summary.off ?? "0"}`;
   const verdictColor = summary.youWon ? "var(--green)" : "var(--red)";
   const verdictGlow = summary.youWon ? "rgba(69,230,69,.5)" : "rgba(255,59,92,.4)";
-  const shareBig = summary.youWon ? `I WON ${usd(result.payPerWinner)}` : `OFF BY ${summary.off ?? "—"}`;
+  const shareBig = summary.youWon ? `I WON ${usd(result.payPerWinner)}` : `OFF BY ${summary.off ?? "0"}`;
   const shareText = summary.youWon
-    ? `I won ${usd(result.payPerWinner)} on TWO·THIRDS. My encrypted card #${yourPick} landed closest to ${result.target}.`
-    : `I played encrypted card #${yourPick} on TWO·THIRDS. Target landed on ${result.target}.`;
+    ? `I won ${usd(result.payPerWinner)} on TWO·THIRDS. My encrypted card #${yourPick} landed closest to ${result.target}. https://twothirds.fun`
+    : `Played card #${yourPick} on TWO·THIRDS. 2/3 target landed on ${result.target}. So close, next one is mine. https://twothirds.fun`;
   const winLabel = summary.winNums.length
     ? `#${summary.winNums[0]}${summary.winNums.length > 1 ? ` +${summary.winNums.length - 1}` : ""}`
     : "—";
@@ -435,7 +435,7 @@ function renderResultPanel() {
   `;
 
   $("btnShare").onclick = () => {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent("https://x.com/twothirdsfun")}`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent("https://twothirds.fun")}`;
     window.open(url, "_blank", "noopener");
   };
 
