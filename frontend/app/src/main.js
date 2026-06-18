@@ -175,7 +175,7 @@ function renderVerifyLinks() {
   if (!config?.game) return;
 
   const explorerBase = getExplorerBase(config);
-  const txHash = state.activeResult?.txHash ?? null;
+  const txHash = state.results[0]?.txHash ?? state.activeResult?.txHash ?? null;
 
   if (txHash) {
     $("lastTx").textContent = shortTx(txHash);
