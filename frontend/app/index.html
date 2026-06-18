@@ -60,7 +60,6 @@
   .tt-status .s b{display:block;font-size:13px;margin-top:4px}
   .tt-trust{display:flex;align-items:center;gap:12px;margin-top:10px;border:1px solid var(--line);background:#0c0804;padding:8px 12px;border-radius:4px;flex-wrap:wrap}
   .tt-trust .b{font-size:9px;color:#0a0705;background:var(--green);padding:6px 9px;border-radius:2px;letter-spacing:1px;box-shadow:0 0 10px rgba(69,230,69,.45)}
-  .tt-trust .pay{font-size:9px;color:#0a0705;background:var(--cyan);padding:6px 9px;border-radius:2px;letter-spacing:1px;box-shadow:0 0 10px rgba(54,245,255,.34)}
   .tt-trust .t{font-size:18px;color:var(--accent-dim);flex:1;min-width:280px;line-height:1.15}
   .tt-verify-btn{font-family:'VT323',monospace;font-size:16px;color:var(--cyan);background:none;border:1px solid color-mix(in oklab,var(--cyan),#050302 55%);padding:5px 11px;border-radius:2px;cursor:pointer;letter-spacing:1px}
   .tt-verify{margin-top:8px;border:1px solid color-mix(in oklab,var(--cyan),#050302 60%);background:#0b1013;padding:14px;border-radius:4px}
@@ -69,6 +68,8 @@
   .tt-step{border-left:2px solid var(--cyan);padding-left:10px}
   .tt-step b{display:block;font-size:10px;color:var(--cyan);margin-bottom:6px}
   .tt-step p{margin:0;font-size:16px;color:var(--accent-dim)}
+  .tt-verify-note{margin-top:12px;padding-top:10px;border-top:1px dashed color-mix(in oklab,var(--cyan),#050302 68%);font-size:15px;color:var(--accent-faint)}
+  .tt-verify-note b{color:var(--cyan);font-weight:400}
   .tt-verify-tx{margin-top:12px;border-top:1px dashed color-mix(in oklab,var(--cyan),#050302 60%);padding-top:9px;font-size:16px;color:var(--accent-faint)}
   .tt-verify-tx b{color:var(--cyan);font-family:inherit;font-weight:400}
   .tt-verify-link{color:var(--cyan)}
@@ -190,7 +191,6 @@
 
   <div class="tt-trust">
     <span class="b tt-px">✓ PROVABLY FAIR</span>
-    <span class="pay tt-px">AUTOMATIC PAYOUT · NO CLAIM REQUIRED</span>
     <span class="t">Encrypted choices powered by Inco Lightning — any number of players can pick the same card and no pick is visible until the round closes</span>
     <button class="tt-verify-btn" id="verifyBtn" type="button">HOW IT WORKS ↗</button>
   </div>
@@ -202,6 +202,7 @@
       <div class="tt-step"><b class="tt-px">2 · ENCRYPT</b><p>Approve + enter() on Base — your $1 USDC joins the pot, choice sealed by Inco.</p></div>
       <div class="tt-step"><b class="tt-px">3 · SETTLE</b><p>Cards decrypt, ⅔×avg is computed, the closest number splits the pot among its holders.</p></div>
     </div>
+    <div class="tt-verify-note"><b>Automatic payout.</b> No claim required, winners are paid by the contract during settlement.</div>
     <div class="tt-verify-tx">
       contract <a class="tt-verify-link" id="contractLink" href="#" target="_blank" rel="noreferrer"><b id="contractShort">0x…</b></a>
       · chain <b id="chainLabel">Base · 8453</b>
