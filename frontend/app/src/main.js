@@ -84,7 +84,7 @@ function buildSharePageUrl(result, summary) {
     win: String(summary.winNums[0] ?? result.target),
   });
 
-  return `https://two-thirds-game.vercel.app/api/share?${params.toString()}`;
+  return `https://twothirds.fun/api/share?${params.toString()}`;
 }
 
 function formatRound(rid) {
@@ -272,70 +272,6 @@ function totalNetPot(result, summary) {
   return BigInt(summary.winnersPlayers) * BigInt(result.payPerWinner ?? 0n);
 }
 
-function buildShareMiniGrid(summary, yourPick) {
-  return Array.from({ length: BOARD_SIZE }, (_, index) => {
-    const classes = ["tt-mini-card"];
-    if (summary.winSet[index]) classes.push("win");
-    if (yourPick === index) classes.push("mine");
-    if (!summary.winSet[index] && yourPick !== index) classes.push("dimmed");
-    return `<div class="${classes.join(" ")}"><span>${index}</span></div>`;
-  }).join("");
-}
-
-function buildSharePreviewCard(result, summary) {
-  const yourPick = Number(result.yourPick);
-  const winLabel = summary.winNums.length
-    ? `#${summary.winNums[0]}${summary.winNums.length > 1 ? ` +${summary.winNums.length - 1}` : ""}`
-    : "—";
-  const bigText = summary.youWon ? `WON ${usd(result.payPerWinner)}` : `OFF BY ${summary.off ?? "0"}`;
-  const note = summary.youWon
-    ? summary.winnersPlayers > 1
-      ? `closest of the field · ${summary.winnersPlayers} winners split ${usd(totalNetPot(result, summary))}`
-      : `closest of the field · 1 winner takes ${usd(result.payPerWinner)}`
-    : "so close · next one is mine";
-  const footRight = summary.youWon
-    ? '<span class="paid">auto-paid ✓</span>'
-    : `<span class="mine">your #${yourPick}</span>`;
-
-  return `
-    <div class="tt-sharecard">
-      <div class="tt-sharecard-border"></div>
-      <div class="tt-sharecard-pad">
-        <div class="tt-sharecard-top">
-          <span class="tt-sharecard-chain">BASE · USDC · INCO ENCRYPTED</span>
-          <span class="tt-sharecard-round tt-px">ROUND ${formatRound(result.rid)}</span>
-        </div>
-        <div class="tt-sharecard-logo tt-px">TWO<span class="dot">·</span>THIRDS</div>
-        <div class="tt-sharecard-mid">
-          <div class="tt-sharecard-copy">
-            <div class="tt-sharecard-label">YOUR RESULT</div>
-            <div class="tt-sharecard-big ${summary.youWon ? "win" : "loss"} tt-px">${bigText}</div>
-            <div class="tt-sharecard-sub tt-px">CARD #${yourPick} · TARGET ${result.target}</div>
-            <div class="tt-sharecard-note">${note}</div>
-          </div>
-          <div class="tt-sharecard-side">
-            <div class="tt-sharecard-bhd">
-              <span class="l">WINNING CARD</span>
-              <span class="v tt-px">${winLabel}</span>
-            </div>
-            <div class="tt-sharecard-grid">${buildShareMiniGrid(summary, yourPick)}</div>
-            <div class="tt-sharecard-foot">
-              <span>avg ${Number(result.avg).toFixed(1)} · pot ${usd(result.grossPot ?? result.netPot)}</span>
-              ${footRight}
-            </div>
-          </div>
-        </div>
-        <div class="tt-sharecard-tag">
-          <span class="t">guess ⅔ of the average · lowest distance takes the pot</span>
-          <span class="d tt-px">twothirds.fun</span>
-        </div>
-      </div>
-      <div class="tt-sharecard-scan"></div>
-      <div class="tt-sharecard-vig"></div>
-    </div>
-  `;
-}
-
 function renderBoard() {
   const board = $("board");
   const reveal = Boolean(state.activeResult);
@@ -510,7 +446,6 @@ function renderResultPanel() {
       · <span class="k">WINNER PAYOUT</span> <span class="pay">${usd(result.payPerWinner)}</span>
       · ${summary.winnersPlayers} ${summary.winnersPlayers === 1 ? "winner" : "winners"}
     </div>
-    ${buildSharePreviewCard(result, summary)}
     <button class="tt-btn" id="btnShare" type="button">▸ SHARE TO 𝕏</button>
     <button class="tt-btn sec" id="btnNext" type="button">▸ BACK TO LIVE ROUND</button>
   `;
