@@ -70,6 +70,22 @@ function shortTx(value) {
   return value ? `${value.slice(0, 6)}…${value.slice(-4)}` : "pending";
 }
 
+function buildSharePageUrl(result, summary) {
+  const params = new URLSearchParams({
+    rid: String(result.rid),
+    card: String(result.yourPick),
+    target: String(result.target),
+    avg: String(result.avg),
+    pot: usd(result.grossPot ?? result.netPot),
+    won: summary.youWon ? "1" : "0",
+    pay: usd(result.payPerWinner),
+    off: String(summary.off ?? 0),
+    winners: String(summary.winnersPlayers),
+  });
+
+  return `https://two-thirds-game.vercel.app/api/share?${params.toString()}`;
+}
+
 function formatRound(rid) {
   return `#${String(toNumber(rid)).padStart(3, "0")}`;
 }
@@ -393,8 +409,9 @@ function renderResultPanel() {
   const verdictGlow = summary.youWon ? "rgba(69,230,69,.5)" : "rgba(255,59,92,.4)";
   const shareBig = summary.youWon ? `I WON ${usd(result.payPerWinner)}` : `OFF BY ${summary.off ?? "0"}`;
   const shareText = summary.youWon
-    ? `I won ${usd(result.payPerWinner)} on TWO·THIRDS. My encrypted card #${yourPick} landed closest to ${result.target}. https://twothirds.fun`
-    : `Played card #${yourPick} on TWO·THIRDS. 2/3 target landed on ${result.target}. So close, next one is mine. https://twothirds.fun`;
+    ? `I won ${usd(result.payPerWinner)} on TWO·THIRDS. My encrypted card #${yourPick} landed closest to ${result.target}.`
+    : `Played card #${yourPick} on TWO·THIRDS. 2/3 target landed on ${result.target}. So close, next one is mine.`;
+  const sharePageUrl = buildSharePageUrl(result, summary);
   const winLabel = summary.winNums.length
     ? `#${summary.winNums[0]}${summary.winNums.length > 1 ? ` +${summary.winNums.length - 1}` : ""}`
     : "—";
@@ -435,7 +452,7 @@ function renderResultPanel() {
   `;
 
   $("btnShare").onclick = () => {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent("https://twothirds.fun")}`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(sharePageUrl)}`;
     window.open(url, "_blank", "noopener");
   };
 
