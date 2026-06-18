@@ -136,12 +136,18 @@ async function collectLogs(eventName, { limit = 10, rid } = {}) {
   requireGameAddress();
 
   const latestBlock = await publicClient.getBlockNumber();
-  const minBlock = latestBlock > MAX_LOG_LOOKBACK_BLOCKS ? latestBlock - MAX_LOG_LOOKBACK_BLOCKS : 0n;
   const matches = [];
   const ridArg = rid === undefined || rid === null ? undefined : toBigInt(rid);
   const args = ridArg === undefined ? undefined : { rid: ridArg };
+  const hardMinBlock = latestBlock > MAX_LOG_LOOKBACK_BLOCKS ? latestBlock - MAX_LOG_LOOKBACK_BLOCKS : 0n;
+  const recentMinBlock = latestSettledBlock === null
+    ? hardMinBlock
+    : (latestSettledBlock > LOG_BLOCK_SPAN ? latestSettledBlock - LOG_BLOCK_SPAN : 0n);
+  const minBlock = ridArg === undefined
+    ? (recentMinBlock > hardMinBlock ? recentMinBlock : hardMinBlock)
+    : hardMinBlock;
 
-  let toBlock = latestSettledBlock && latestSettledBlock < latestBlock ? latestSettledBlock : latestBlock;
+  let toBlock = latestBlock;
   while (toBlock >= minBlock) {
     const fromBlock = toBlock > LOG_BLOCK_SPAN ? toBlock - LOG_BLOCK_SPAN : 0n;
     const logs = await publicClient.getContractEvents({
