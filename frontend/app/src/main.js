@@ -160,6 +160,8 @@ function renderContractInfo(config) {
     $("contractLink").classList.add("is-disabled");
     $("verifyOnchainLink").removeAttribute("href");
     $("verifyOnchainLink").classList.add("is-disabled");
+    $("verifiedBadge").removeAttribute("href");
+    $("verifiedBadge").classList.add("is-disabled");
     return;
   }
 
@@ -168,6 +170,8 @@ function renderContractInfo(config) {
   $("contractLink").classList.remove("is-disabled");
   $("verifyOnchainLink").href = `${explorerBase}/address/${config.game}`;
   $("verifyOnchainLink").classList.remove("is-disabled");
+  $("verifiedBadge").href = `${explorerBase}/address/${config.game}#code`;
+  $("verifiedBadge").classList.remove("is-disabled");
 }
 
 function renderVerifyLinks() {
