@@ -87,7 +87,7 @@ function buildSharePageUrl(result, summary) {
     v: result.txHash ? result.txHash.slice(-8) : `${result.rid}-${result.yourPick}-${summary.winnersPlayers}`,
   });
 
-  return `https://twothirds.fun/api/share?${params.toString()}`;
+  return `https://twothirds.fun/api/share.ts?${params.toString()}`;
 }
 
 function formatRound(rid) {

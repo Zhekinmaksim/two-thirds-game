@@ -6,8 +6,6 @@
     { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
   ],
   "routes": [
-    { "src": "/api/share-image", "dest": "/api/share-image.ts" },
-    { "src": "/api/share", "dest": "/api/share.ts" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]

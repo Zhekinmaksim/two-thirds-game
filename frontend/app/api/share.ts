@@ -39,7 +39,7 @@ export default function handler(
   const description = won
     ? `Round #${rid}. Card #${card} landed closest to target ${target}. ${winners} winner${winners === "1" ? "" : "s"} split the pot.`
     : `Round #${rid}. Card #${card}, target ${target}, off by ${off}. Next one is mine.`;
-  const imageUrl = `${origin}/api/share-image${url.search}`;
+  const imageUrl = `${origin}/api/share-image.ts${url.search}`;
   const destination = "https://twothirds.fun";
   const imageAlt = won
     ? `TWO THIRDS result card, round ${rid}, card ${card} won ${pay}`
