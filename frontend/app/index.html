@@ -34,7 +34,7 @@
   @keyframes tt-sparkPop{0%{opacity:0;transform:translateY(3px) scale(0)}22%{opacity:1;transform:translateY(-2px) scale(1)}100%{opacity:0;transform:translateY(-13px) scale(.3)}}
   @keyframes tt-badgePop{0%{opacity:0;transform:translateX(-50%) translateY(5px) scale(.4)}60%{opacity:1;transform:translateX(-50%) translateY(0) scale(1.18)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
   @keyframes tt-winPulse{0%,100%{box-shadow:0 0 9px rgba(69,230,69,.45),inset 0 0 0 1px var(--green),inset 0 0 14px rgba(69,230,69,.25)}50%{box-shadow:0 0 26px rgba(69,230,69,.9),inset 0 0 0 1px var(--green),inset 0 0 18px rgba(69,230,69,.4)}}
-  @keyframes tt-winPop{0%{transform:scale(.7)}55%{transform:scale(1.18)}100%{transform:scale(1.09)}}
+  @keyframes tt-winPop{0%{transform:scale(.82)}55%{transform:scale(1.08)}100%{transform:scale(1.03)}}
   @keyframes tt-blink{50%{opacity:0}}
   @keyframes tt-live{0%,100%{opacity:1}50%{opacity:.3}}
   @keyframes tt-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
@@ -99,18 +99,17 @@
   .tt-board.is-rev .cover{animation:tt-scratchWipe .5s ease forwards}
   .tt-board.is-rev .face{animation:tt-decodeIn .42s ease both}
   .tt-board.is-rev .tt-cardcell{cursor:default}
-  .tt-board.is-rev .tt-cardcell.win{transform:scale(1.09);z-index:5;animation:tt-winPop .5s ease}
-  .tt-board.is-rev .tt-cardcell.win .face{padding-top:10px;padding-bottom:10px}
+  .tt-board.is-rev .tt-cardcell.win{transform:scale(1.03);z-index:5;animation:tt-winPop .5s ease}
+  .tt-board.is-rev .tt-cardcell.win .face{padding-top:14px;padding-bottom:10px}
   .tt-board.is-rev .tt-cardcell.win .face .cnum2{font-size:12px;color:var(--green);text-shadow:0 0 9px rgba(69,230,69,.7)}
   .tt-board.is-rev .tt-cardcell.win .face .cnt{bottom:4px;font-size:6px;padding:1px 3px;background:rgba(10,7,5,.88)}
   .tt-board.is-rev .tt-cardcell:not(.win){opacity:.5;filter:saturate(.55) brightness(.8)}
   .tt-board.is-rev .tt-cardcell.mine{opacity:1;filter:none}
   .tt-board.is-rev .winGlow{animation:tt-winPulse 1.25s ease infinite}
   .tt-board.is-rev .winBadge{animation:tt-badgePop .45s ease .12s forwards}
-  .tt-board.is-rev .tt-cardcell.win .winBadge{left:auto;right:2px;transform:none}
   .tt-board.is-rev .spark-dot{animation:tt-sparkPop .8s ease-out forwards}
   .winGlow{position:absolute;inset:0;z-index:2;border-radius:4px;pointer-events:none}
-  .winBadge{position:absolute;top:2px;left:50%;transform:translateX(-50%);z-index:6;font-family:'Press Start 2P',monospace;font-size:5px;line-height:1;color:#0a0705;background:var(--green);padding:2px 3px;border-radius:2px;box-shadow:0 0 12px rgba(69,230,69,.85);opacity:0;white-space:nowrap;pointer-events:none}
+  .winBadge{position:absolute;top:5px;left:50%;transform:translateX(-50%);z-index:6;font-family:'Press Start 2P',monospace;font-size:5px;line-height:1;color:#0a0705;background:var(--green);padding:2px 3px;border-radius:2px;box-shadow:0 0 12px rgba(69,230,69,.85);opacity:0;white-space:nowrap;pointer-events:none}
   .spark-dot{position:absolute;border-radius:50%;opacity:0;z-index:4;pointer-events:none}
   .ringtag{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);z-index:6;font-family:'Press Start 2P',monospace;font-size:6px;color:#0a0705;background:var(--cyan);padding:2px 4px;border-radius:2px;letter-spacing:1px;white-space:nowrap}
   .tt-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:11px;font-size:18px;line-height:1.25;color:var(--accent-faint)}
