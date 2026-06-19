@@ -1,10 +1,6 @@
 import { createElement as h } from "react";
 import { ImageResponse } from "@vercel/og";
 
-export const config = {
-  runtime: "edge",
-};
-
 function readText(url: URL, key: string, fallback: string) {
   return url.searchParams.get(key)?.trim() || fallback;
 }
@@ -66,8 +62,22 @@ function miniGrid(winNum: number, yourNum: number) {
   return box({ flexDirection: "column", gap: 5 }, ...rows);
 }
 
-export default function handler(request: Request) {
-  const url = new URL(request.url);
+function readHeader(headers: Record<string, string | string[] | undefined>, key: string) {
+  const value = headers[key];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function handler(
+  request: { url?: string; headers: Record<string, string | string[] | undefined> },
+  response: {
+    setHeader: (name: string, value: string) => void;
+    statusCode: number;
+    end: (body: Buffer) => void;
+  },
+) {
+  const proto = readHeader(request.headers, "x-forwarded-proto") ?? "https";
+  const host = readHeader(request.headers, "host") ?? "twothirds.fun";
+  const url = new URL(request.url ?? "/", `${proto}://${host}`);
 
   const rid = readText(url, "rid", "0");
   const yourNum = Number(readText(url, "card", "0"));
@@ -89,7 +99,7 @@ export default function handler(request: Request) {
   const verdictColor = won ? "#45e645" : "#ff3b5c";
   const footRight = won ? "auto-paid ✓" : `your #${yourNum}`;
 
-  return new ImageResponse(
+  const image = new ImageResponse(
     box(
       {
         width: "100%",
@@ -280,4 +290,10 @@ export default function handler(request: Request) {
     ),
     { width: 1200, height: 630 },
   );
+
+  const body = Buffer.from(await image.arrayBuffer());
+  response.statusCode = 200;
+  response.setHeader("content-type", "image/png");
+  response.setHeader("cache-control", "public, max-age=0, s-maxage=86400");
+  response.end(body);
 }

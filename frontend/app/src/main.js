@@ -84,6 +84,7 @@ function buildSharePageUrl(result, summary) {
     off: String(summary.off ?? 0),
     winners: String(summary.winnersPlayers),
     win: String(summary.winNums[0] ?? result.target),
+    v: result.txHash ? result.txHash.slice(-8) : `${result.rid}-${result.yourPick}-${summary.winnersPlayers}`,
   });
 
   return `https://twothirds.fun/api/share?${params.toString()}`;

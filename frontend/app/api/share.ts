@@ -41,6 +41,9 @@ export default function handler(
     : `Round #${rid}. Card #${card}, target ${target}, off by ${off}. Next one is mine.`;
   const imageUrl = `${origin}/api/share-image${url.search}`;
   const destination = "https://twothirds.fun";
+  const imageAlt = won
+    ? `TWO THIRDS result card, round ${rid}, card ${card} won ${pay}`
+    : `TWO THIRDS result card, round ${rid}, card ${card}, target ${target}`;
 
   const html = `<!doctype html>
 <html lang="en">
@@ -57,14 +60,23 @@ export default function handler(
     <meta property="og:url" content="${esc(url.toString())}" />
     <meta property="og:image" content="${esc(imageUrl)}" />
     <meta property="og:image:secure_url" content="${esc(imageUrl)}" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="${esc(imageAlt)}" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@twothirdsfun" />
     <meta name="twitter:title" content="${esc(title)}" />
     <meta name="twitter:description" content="${esc(description)}" />
     <meta name="twitter:url" content="${esc(url.toString())}" />
     <meta name="twitter:image" content="${esc(imageUrl)}" />
-    <meta http-equiv="refresh" content="0;url=${destination}" />
+    <meta name="twitter:image:alt" content="${esc(imageAlt)}" />
+    <script>
+      window.location.replace(${JSON.stringify(destination)});
+    </script>
+    <noscript>
+      <meta http-equiv="refresh" content="0;url=${destination}" />
+    </noscript>
     <style>
       body{margin:0;background:#0a0705;color:#ffb000;font:20px/1.4 monospace;display:grid;place-items:center;height:100vh}
       .box{max-width:720px;padding:24px;border:1px solid #4d3510;background:#120b06}
