@@ -1,20 +1,19 @@
 import { createElement as h } from "react";
 import { ImageResponse } from "@vercel/og";
 
-function readText(url, key, fallback) {
+export const config = {
+  runtime: "edge",
+};
+
+function readText(url: URL, key: string, fallback: string) {
   return url.searchParams.get(key)?.trim() || fallback;
 }
 
-function readHeader(headers, key) {
-  const value = headers[key];
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function box(style, ...children) {
+function box(style: Record<string, string | number>, ...children: unknown[]) {
   return h("div", { style: { display: "flex", ...style } }, ...children);
 }
 
-function miniCell(index, winNum, yourNum) {
+function miniCell(index: number, winNum: number, yourNum: number) {
   const isWin = index === winNum;
   const isMine = index === yourNum;
   const background = isWin
@@ -54,7 +53,7 @@ function miniCell(index, winNum, yourNum) {
   );
 }
 
-function miniGrid(winNum, yourNum) {
+function miniGrid(winNum: number, yourNum: number) {
   const rows = [];
   for (let row = 0; row < 8; row += 1) {
     const cells = [];
@@ -67,10 +66,8 @@ function miniGrid(winNum, yourNum) {
   return box({ flexDirection: "column", gap: 5 }, ...rows);
 }
 
-export default async function handler(request, response) {
-  const proto = readHeader(request.headers, "x-forwarded-proto") ?? "https";
-  const host = readHeader(request.headers, "host") ?? "twothirds.fun";
-  const url = new URL(request.url ?? "/", `${proto}://${host}`);
+export default function handler(request: Request) {
+  const url = new URL(request.url);
 
   const rid = readText(url, "rid", "0");
   const yourNum = Number(readText(url, "card", "0"));
@@ -92,7 +89,7 @@ export default async function handler(request, response) {
   const verdictColor = won ? "#45e645" : "#ff3b5c";
   const footRight = won ? "auto-paid ✓" : `your #${yourNum}`;
 
-  const image = new ImageResponse(
+  return new ImageResponse(
     box(
       {
         width: "100%",
@@ -276,17 +273,11 @@ export default async function handler(request, response) {
               fontWeight: 700,
               color: "#ffb000",
             },
-            "twothird.fun",
+            "twothirds.fun",
           ),
         ),
       ),
     ),
     { width: 1200, height: 630 },
   );
-
-  response.statusCode = 200;
-  for (const [key, value] of image.headers.entries()) {
-    response.setHeader(key, value);
-  }
-  response.end(Buffer.from(await image.arrayBuffer()));
 }
