@@ -1,6 +1,7 @@
 const BOARD_SIZE = 64;
 const MAX_PLAYERS = 100;
 const RECENT_LIMIT = 12;
+const ROUND_REFRESH_MS = 2_500;
 const REFRESH_MS = 12_000;
 const STORAGE_PENDING = "twothirds:pending";
 const STORAGE_LAST_RESULT = "twothirds:last-result";
@@ -22,6 +23,7 @@ const state = {
   lastResultRef: loadStoredJson(STORAGE_LAST_RESULT),
   lastKnownAccount: loadStoredJson(STORAGE_ACCOUNT),
   refreshInFlight: false,
+  roundRefreshInFlight: false,
   lastRefreshAt: 0,
   connecting: false,
   submitting: false,
@@ -733,6 +735,41 @@ async function syncResultState(integration) {
   state.activeResult = null;
 }
 
+function applyRoundSnapshot(round) {
+  state.currentRound = round;
+  renderStatus();
+  renderControl();
+}
+
+async function refreshRoundOnly() {
+  if (state.refreshInFlight || state.roundRefreshInFlight) return;
+
+  state.roundRefreshInFlight = true;
+
+  try {
+    const integration = await loadIntegration();
+    window.__ttConfig = integration.CONFIG;
+
+    const nextRound = await integration.getCurrentRound();
+    const prevRound = state.currentRound;
+    const roundChanged = !prevRound || Number(prevRound.rid) !== Number(nextRound.rid);
+    const settledChanged = Boolean(prevRound?.settled) !== Boolean(nextRound.settled);
+
+    applyRoundSnapshot(nextRound);
+
+    if (roundChanged || settledChanged) {
+      await refresh();
+      return;
+    }
+
+    if (!state.account) setStatusMessage("");
+  } catch {
+    // keep the last visible state and let the slower full refresh surface errors
+  } finally {
+    state.roundRefreshInFlight = false;
+  }
+}
+
 async function refresh() {
   if (state.refreshInFlight) return;
   state.refreshInFlight = true;
@@ -757,14 +794,12 @@ async function refresh() {
     ]);
 
     if (meta) state.meta = meta;
-    state.currentRound = round;
+    applyRoundSnapshot(round);
     state.results = recent;
     renderContractInfo(integration.CONFIG);
     await syncResultState(integration);
     renderMeta();
-    renderStatus();
     renderBoard();
-    renderControl();
     renderLeaderboard();
     renderFeed();
     renderVerifyLinks();
@@ -806,6 +841,15 @@ async function handleConnectAndEnter() {
 
     const round = await integration.getCurrentRound();
     const txHash = await integration.playRound(state.wallet, state.account, state.selectedNumber);
+    const entryFee = state.meta?.entryFee ?? 1_000_000n;
+
+    if (state.currentRound && Number(state.currentRound.rid) === Number(round.rid)) {
+      applyRoundSnapshot({
+        ...state.currentRound,
+        pot: BigInt(state.currentRound.pot ?? 0n) + BigInt(entryFee),
+        playerCount: Math.min(MAX_PLAYERS, Number(state.currentRound.playerCount ?? 0) + 1),
+      });
+    }
 
     persistLastResult(null);
     persistPending({
@@ -815,6 +859,9 @@ async function handleConnectAndEnter() {
     });
     state.activeResult = null;
     setStatusMessage("Encrypted entry submitted. The round will settle automatically after close.");
+    renderBoard();
+    renderControl();
+    await refreshRoundOnly();
     await refresh();
   } catch (error) {
     setStatusMessage(`Action failed: ${error?.shortMessage || error?.message || "wallet request failed"}`);
@@ -876,6 +923,10 @@ function startLoops() {
     if (secondsLeft === null) return;
     if (secondsLeft === 0 && Date.now() - state.lastRefreshAt > 1_250) refresh();
   }, 1_000);
+
+  window.setInterval(() => {
+    refreshRoundOnly();
+  }, ROUND_REFRESH_MS);
 
   window.setInterval(() => {
     refresh();
