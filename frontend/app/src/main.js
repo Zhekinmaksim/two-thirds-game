@@ -380,7 +380,7 @@ function renderWalletHelp() {
     return;
   }
 
-  $("walletHelp").textContent = "Public round data is visible without a wallet. Connect only when you want to sign a real encrypted entry.";
+  $("walletHelp").textContent = "Public round data is visible without a wallet. Connect a wallet or Base Account only when you want to sign a real encrypted entry.";
 }
 
 function renderControl() {
@@ -415,7 +415,7 @@ function renderControl() {
       button.textContent = "▸ ROUND FULL";
     } else if (!state.account) {
       button.disabled = false;
-      button.textContent = "▸ CONNECT WALLET & ENTER ($1)";
+      button.textContent = "▸ CONNECT & ENTER ($1)";
     } else {
       button.disabled = false;
       button.textContent = "▸ SIGN TX & ENTER ($1)";

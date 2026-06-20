@@ -1,0 +1,18 @@
+{
+  "name": "TWO·THIRDS",
+  "short_name": "TWO·THIRDS",
+  "description": "Choose one of 64 encrypted numbers. Closest to two thirds of the average takes the pot.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0705",
+  "theme_color": "#0a0705",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "800x800",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

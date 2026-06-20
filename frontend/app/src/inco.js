@@ -12,6 +12,7 @@ import {
 } from "viem";
 import * as IncoLite from "@inco/js/lite";
 import { handleTypes } from "@inco/js";
+import { createBaseAccountSDK } from "@base-org/account";
 
 const DEFAULTS = {
   pepper: "mainnet",
@@ -74,6 +75,9 @@ const resultCache = new Map();
 let latestSettledBlock = null;
 let inco = null;
 let gameMetaPromise = null;
+let baseAccountProvider = undefined;
+let eip6963Started = false;
+const eip6963Providers = new Map();
 
 const GAME_ABI = parseAbi([
   "function enter(bytes ciphertext) payable",
@@ -325,6 +329,7 @@ async function hydrateRefundedLog(log) {
 }
 
 function providerRank(provider) {
+  if (provider?.__ttBaseAccount) return isProbablyBaseApp() ? -1 : 4;
   if (provider?.isRabby) return 0;
   if (provider?.isMetaMask) return 1;
   if (provider?.isCoinbaseWallet) return 2;
@@ -332,9 +337,67 @@ function providerRank(provider) {
   return 9;
 }
 
+function isProbablyBaseApp() {
+  if (typeof window === "undefined") return false;
+
+  const ua = window.navigator?.userAgent ?? "";
+  const referrer = window.document?.referrer ?? "";
+  return /base\.app/i.test(referrer)
+    || /\bBaseApp\b/i.test(ua)
+    || /\bBase\/[\d.]+\b/i.test(ua)
+    || /\bCoinbaseWallet\b/i.test(ua);
+}
+
+function startEip6963Discovery() {
+  if (eip6963Started || typeof window === "undefined") return;
+  eip6963Started = true;
+
+  window.addEventListener("eip6963:announceProvider", (event) => {
+    const detail = event?.detail;
+    const provider = detail?.provider;
+    if (!provider || typeof provider.request !== "function") return;
+    eip6963Providers.set(provider, detail?.info ?? null);
+  });
+
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+}
+
+function getBaseAccountProvider() {
+  if (baseAccountProvider !== undefined) return baseAccountProvider;
+  baseAccountProvider = null;
+
+  if (typeof window === "undefined") return baseAccountProvider;
+
+  try {
+    const sdk = createBaseAccountSDK({
+      appName: "TWO·THIRDS",
+      appLogoUrl: `${window.location.origin}/favicon.png`,
+      appChainIds: [CONFIG.chainId],
+      preference: {
+        attribution: { auto: true },
+      },
+    });
+
+    const provider = sdk.getProvider();
+    if (provider && typeof provider.request === "function") {
+      provider.__ttBaseAccount = true;
+      baseAccountProvider = provider;
+    }
+  } catch {
+    baseAccountProvider = null;
+  }
+
+  return baseAccountProvider;
+}
+
 function getInjectedProviders() {
+  startEip6963Discovery();
+
   const candidates = [];
+  const baseProvider = getBaseAccountProvider();
+  if (baseProvider) candidates.push(baseProvider);
   if (window.rabby?.ethereum) candidates.push(window.rabby.ethereum);
+  if (eip6963Providers.size) candidates.push(...eip6963Providers.keys());
   if (window.ethereum?.providers?.length) candidates.push(...window.ethereum.providers);
   if (window.ethereum) candidates.push(window.ethereum);
 
@@ -374,7 +437,7 @@ async function ensureChain(provider) {
     return;
   } catch (error) {
     const code = getErrorCode(error);
-    if (code !== 4902 && code !== -32603) throw error;
+    if (code !== 4902 && code !== -32603 && code !== -32601) throw error;
   }
 
   await provider.request({
@@ -382,7 +445,7 @@ async function ensureChain(provider) {
     params: [{
       chainId: `0x${CONFIG.chainId.toString(16)}`,
       chainName: CONFIG.chainName,
-      rpcUrls: [CONFIG.rpcUrl],
+      rpcUrls,
       nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
       blockExplorerUrls: [`https://${CONFIG.chainId === 84532 ? "sepolia." : ""}basescan.org`],
     }],

@@ -43,6 +43,7 @@ two-thirds-game/
 - Frontend production URL: `https://twothirds.fun`
 - Mainnet contract: `0x4163b226f978E071FD45bc913bf9EbC8ed2d5860`
 - Network: `Base`
+- Base App model: same `https://twothirds.fun` web client opened inside Base App
 - Mainnet keeper Fly app: `two-thirds-keeper-mainnet`
 - Testnet keeper Fly app: `two-thirds-keeper-testnet`
 
@@ -198,5 +199,7 @@ fly deploy -c fly.mainnet.toml
 ## Notes
 
 - The frontend is public-read first: round, pot, timer, results, archive, leaderboard, and live feed work without wallet connection.
+- The frontend includes standard web-app metadata and Base Account support for Base App compatibility.
+- Base App distribution still requires project metadata to be completed on `Base.dev`.
 - The favicon is aligned with the social avatar asset.
 - The recent leaderboard is derived from real settled rounds, not simulated data.
