@@ -736,6 +736,24 @@ async function syncResultState(integration) {
   state.activeResult = null;
 }
 
+async function syncPendingResultOnly(integration) {
+  const hadActive = Boolean(state.activeResult);
+  const previousRid = state.activeResult?.rid ?? null;
+
+  await syncResultState(integration);
+
+  const nextRid = state.activeResult?.rid ?? null;
+  const changed = previousRid !== nextRid || hadActive !== Boolean(state.activeResult);
+  if (!changed) return false;
+
+  renderBoard();
+  renderControl();
+  renderLeaderboard();
+  renderFeed();
+  renderVerifyLinks();
+  return true;
+}
+
 function applyRoundSnapshot(round) {
   state.currentRound = round;
   renderStatus();
@@ -760,6 +778,11 @@ async function refreshRoundOnly() {
 
     if (roundChanged || settledChanged) {
       await refresh();
+      return;
+    }
+
+    if (state.pending?.rid !== undefined || state.lastResultRef?.rid !== undefined) {
+      await syncPendingResultOnly(integration);
       return;
     }
 
