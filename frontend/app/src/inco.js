@@ -61,13 +61,13 @@ export const CONFIG = {
 
 const RPC_FALLBACKS = {
   8453: [
-    "https://mainnet.base.org",
     "https://base-rpc.publicnode.com",
+    "https://mainnet.base.org",
     DEFAULTS.rpcUrl,
   ],
 };
 
-const rpcUrls = [...new Set([CONFIG.rpcUrl, ...(RPC_FALLBACKS[CONFIG.chainId] ?? [])])];
+const rpcUrls = [...new Set([...(RPC_FALLBACKS[CONFIG.chainId] ?? []), CONFIG.rpcUrl].filter(Boolean))];
 const LOG_BLOCK_SPAN = 5_000n;
 const MAX_LOG_LOOKBACK_BLOCKS = 100_000n;
 const resultCache = new Map();
@@ -353,6 +353,10 @@ function getErrorCode(error) {
   return error?.code ?? error?.cause?.code ?? error?.data?.originalError?.code;
 }
 
+function getErrorMessage(error, fallback) {
+  return error?.shortMessage || error?.cause?.shortMessage || error?.message || error?.cause?.message || fallback;
+}
+
 async function getChainId(provider) {
   const chainIdHex = await provider.request({ method: "eth_chainId" });
   return Number.parseInt(chainIdHex, 16);
@@ -447,24 +451,37 @@ export async function playRound(wallet, account, pick) {
   requireGameAddress();
   requireTokenAddress();
 
-  const entryFee = await publicClient.readContract({
-    address: CONFIG.game,
-    abi: GAME_ABI,
-    functionName: "entryFee",
-  });
-  const inputFee = await publicClient.readContract({
-    address: CONFIG.game,
-    abi: GAME_ABI,
-    functionName: "inputFee",
-  });
+  let entryFee;
+  let inputFee;
+  try {
+    [entryFee, inputFee] = await Promise.all([
+      publicClient.readContract({
+        address: CONFIG.game,
+        abi: GAME_ABI,
+        functionName: "entryFee",
+      }),
+      publicClient.readContract({
+        address: CONFIG.game,
+        abi: GAME_ABI,
+        functionName: "inputFee",
+      }),
+    ]);
+  } catch (error) {
+    throw new Error(`Could not read round fees. ${getErrorMessage(error, "RPC read failed.")}`, { cause: error });
+  }
 
   const encryptedPick = clampPick(pick);
-  const client = await getInco();
-  const ciphertext = await client.encrypt(BigInt(encryptedPick), {
-    accountAddress: account,
-    dappAddress: CONFIG.game,
-    handleType: handleTypes.euint256,
-  });
+  let ciphertext;
+  try {
+    const client = await getInco();
+    ciphertext = await client.encrypt(BigInt(encryptedPick), {
+      accountAddress: account,
+      dappAddress: CONFIG.game,
+      handleType: handleTypes.euint256,
+    });
+  } catch (error) {
+    throw new Error(`Encryption failed. ${getErrorMessage(error, "Inco could not seal this pick.")}`, { cause: error });
+  }
 
   const erc20 = getContract({
     address: CONFIG.token,
@@ -472,10 +489,20 @@ export async function playRound(wallet, account, pick) {
     client: { public: publicClient, wallet },
   });
 
-  const allowance = await erc20.read.allowance([account, CONFIG.game]);
+  let allowance;
+  try {
+    allowance = await erc20.read.allowance([account, CONFIG.game]);
+  } catch (error) {
+    throw new Error(`Allowance check failed. ${getErrorMessage(error, "Could not read USDC allowance.")}`, { cause: error });
+  }
+
   if (allowance < entryFee) {
-    const approveTx = await erc20.write.approve([CONFIG.game, entryFee], { account });
-    await publicClient.waitForTransactionReceipt({ hash: approveTx });
+    try {
+      const approveTx = await erc20.write.approve([CONFIG.game, entryFee], { account });
+      await publicClient.waitForTransactionReceipt({ hash: approveTx });
+    } catch (error) {
+      throw new Error(`USDC approval failed. ${getErrorMessage(error, "Wallet approval was rejected or malformed.")}`, { cause: error });
+    }
   }
 
   const game = getContract({
@@ -484,9 +511,13 @@ export async function playRound(wallet, account, pick) {
     client: { public: publicClient, wallet },
   });
 
-  const tx = await game.write.enter([ciphertext], { account, value: inputFee });
-  await publicClient.waitForTransactionReceipt({ hash: tx });
-  return tx;
+  try {
+    const tx = await game.write.enter([ciphertext], { account, value: inputFee });
+    await publicClient.waitForTransactionReceipt({ hash: tx });
+    return tx;
+  } catch (error) {
+    throw new Error(`Entry transaction failed. ${getErrorMessage(error, "The encrypted entry transaction did not complete.")}`, { cause: error });
+  }
 }
 
 export async function getCurrentRound() {

@@ -823,19 +823,25 @@ async function handleConnectAndEnter() {
 
   try {
     const integration = await loadIntegration();
-    if (!state.account) {
-      state.connecting = true;
-      renderControl();
-      const resumed = await integration.resumeWalletConnection({ ensureCorrectChain: true }).catch(() => null);
-      const { wallet, account } = resumed ?? await integration.connectWallet();
+    state.connecting = true;
+    renderControl();
+
+    const resumed = await integration.resumeWalletConnection({ ensureCorrectChain: true }).catch(() => null);
+    if (resumed) {
+      state.wallet = resumed.wallet;
+      state.account = resumed.account;
+      persistKnownAccount(resumed.account);
+    } else {
+      const { wallet, account } = await integration.connectWallet();
       state.wallet = wallet;
       state.account = account;
       persistKnownAccount(account);
-      state.connecting = false;
-      setStatusMessage("");
-      renderControl();
-      renderLeaderboard();
     }
+
+    state.connecting = false;
+    setStatusMessage("");
+    renderControl();
+    renderLeaderboard();
 
     state.submitting = true;
     renderControl();
