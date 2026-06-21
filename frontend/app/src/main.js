@@ -847,6 +847,7 @@ async function handleConnectAndEnter() {
   try {
     const integration = await loadIntegration();
     state.connecting = true;
+    setStatusMessage("Connecting wallet...");
     renderControl();
 
     const resumed = await integration.resumeWalletConnection({ ensureCorrectChain: true }).catch(() => null);
@@ -862,7 +863,7 @@ async function handleConnectAndEnter() {
     }
 
     state.connecting = false;
-    setStatusMessage("");
+    setStatusMessage("Preparing encrypted entry...");
     renderControl();
     renderLeaderboard();
 

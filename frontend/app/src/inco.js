@@ -426,6 +426,8 @@ async function getChainId(provider) {
 }
 
 async function ensureChain(provider) {
+  if (provider?.__ttBaseAccount) return;
+
   const current = await getChainId(provider);
   if (current === CONFIG.chainId) return;
 
@@ -465,19 +467,10 @@ export async function connectWallet() {
 
   for (const provider of providers) {
     try {
-      try {
-        await ensureChain(provider);
-      } catch (error) {
-        if (getErrorCode(error) === 4100) {
-          await provider.request({ method: "eth_requestAccounts" });
-          await ensureChain(provider);
-        } else {
-          throw error;
-        }
-      }
-
       const accounts = await provider.request({ method: "eth_requestAccounts" });
       if (!accounts?.length) throw new Error("Wallet returned no accounts.");
+
+      await ensureChain(provider);
 
       const wallet = createWalletClient({ chain, transport: custom(provider) });
       return { wallet, account: getAddress(accounts[0]) };
