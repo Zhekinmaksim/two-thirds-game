@@ -239,8 +239,58 @@
     .tt-verify-grid{grid-template-columns:1fr}
   }
   @media (max-width:760px){
+    .tt-marquee{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:
+        "coin badge"
+        "title title"
+        "tag tag";
+      align-items:start;
+      row-gap:10px;
+      padding:14px 12px 13px;
+      text-align:left;
+    }
+    .tt-coin{
+      position:static;
+      grid-area:coin;
+      justify-self:start;
+      font-size:13px;
+      line-height:1.2;
+    }
+    .tt-inco{
+      position:static;
+      grid-area:badge;
+      justify-self:end;
+      font-size:8px;
+      line-height:1.2;
+      padding:5px 6px;
+    }
+    .tt-title{
+      grid-area:title;
+      font-size:22px;
+      line-height:1.08;
+      letter-spacing:1px;
+      text-align:center;
+    }
+    .tt-tag{
+      grid-area:tag;
+      margin:0 auto;
+      max-width:26ch;
+      font-size:14px;
+      line-height:1.35;
+      letter-spacing:.5px;
+      text-align:center;
+    }
     .tt-grid{grid-template-columns:1fr}
     .tt-actions{grid-template-columns:1fr}
+  }
+  @media (max-width:420px){
+    .tt-root{padding:12px 12px 44px}
+    .tt-title{font-size:20px}
+    .tt-tag{font-size:13px;max-width:24ch}
+    .tt-coin{font-size:12px}
+    .tt-inco{font-size:7px}
   }
 </style>
 </head>
