@@ -73,6 +73,9 @@ const LOG_BLOCK_SPAN = 5_000n;
 const MAX_LOG_LOOKBACK_BLOCKS = 100_000n;
 const resultCache = new Map();
 let latestSettledBlock = null;
+let allSettledLogsCache = [];
+let allSettledResultsCache = [];
+let allSettledScannedToBlock = null;
 let inco = null;
 let gameMetaPromise = null;
 let baseAccountProvider = undefined;
@@ -183,6 +186,55 @@ async function collectLogs(eventName, { limit = 10, rid } = {}) {
   }
 
   return matches;
+}
+
+function sortLogsNewestFirst(logs) {
+  return [...logs].sort((left, right) => {
+    const leftBlock = left.blockNumber ?? 0n;
+    const rightBlock = right.blockNumber ?? 0n;
+    if (leftBlock === rightBlock) return Number((right.logIndex ?? 0) - (left.logIndex ?? 0));
+    return leftBlock > rightBlock ? -1 : 1;
+  });
+}
+
+async function collectAllSettledLogs() {
+  requireGameAddress();
+
+  const latestBlock = await publicClient.getBlockNumber();
+  const fromStart = allSettledScannedToBlock === null ? 0n : allSettledScannedToBlock + 1n;
+
+  if (fromStart > latestBlock) return allSettledLogsCache;
+
+  let fromBlock = fromStart;
+  while (fromBlock <= latestBlock) {
+    const toBlock = fromBlock + LOG_BLOCK_SPAN > latestBlock
+      ? latestBlock
+      : fromBlock + LOG_BLOCK_SPAN;
+    const logs = await publicClient.getContractEvents({
+      address: CONFIG.game,
+      abi: GAME_ABI,
+      eventName: "Settled",
+      fromBlock,
+      toBlock,
+    });
+
+    if (logs.length) {
+      allSettledLogsCache.push(...logs);
+      for (const log of logs) {
+        if (typeof log.blockNumber === "bigint") {
+          latestSettledBlock = latestSettledBlock === null || log.blockNumber > latestSettledBlock
+            ? log.blockNumber
+            : latestSettledBlock;
+        }
+      }
+    }
+
+    fromBlock = toBlock + 1n;
+  }
+
+  allSettledScannedToBlock = latestBlock;
+  allSettledLogsCache = sortLogsNewestFirst(allSettledLogsCache);
+  return allSettledLogsCache;
 }
 
 async function getDecryptedNumbers(rid) {
@@ -631,14 +683,16 @@ export async function getRoundResult(rid) {
 
 export async function getRecentResults(limit = 10) {
   const logs = await collectLogs("Settled", { limit });
-  const recent = logs
-    .sort((left, right) => {
-      const leftBlock = left.blockNumber ?? 0n;
-      const rightBlock = right.blockNumber ?? 0n;
-      if (leftBlock === rightBlock) return Number((right.logIndex ?? 0) - (left.logIndex ?? 0));
-      return leftBlock > rightBlock ? -1 : 1;
-    })
-    .slice(0, limit);
+  const recent = sortLogsNewestFirst(logs).slice(0, limit);
 
   return Promise.all(recent.map((log) => hydrateSettledLog(log)));
+}
+
+export async function getAllTimeResults() {
+  const previousCount = allSettledLogsCache.length;
+  const logs = await collectAllSettledLogs();
+  if (allSettledResultsCache.length && logs.length === previousCount) return allSettledResultsCache;
+
+  allSettledResultsCache = await Promise.all(logs.map((log) => hydrateSettledLog(log)));
+  return allSettledResultsCache;
 }

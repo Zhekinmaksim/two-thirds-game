@@ -18,6 +18,7 @@ const state = {
   currentRound: null,
   meta: null,
   results: [],
+  leaderboardResults: [],
   activeResult: null,
   pending: loadStoredJson(STORAGE_PENDING),
   lastResultRef: loadStoredJson(STORAGE_LAST_RESULT),
@@ -612,7 +613,7 @@ function renderLeaderboard() {
   const viewerAccount = (state.account ?? state.lastKnownAccount ?? "").toLowerCase();
   const stats = new Map();
 
-  for (const result of state.results) {
+  for (const result of state.leaderboardResults) {
     for (const player of result.players ?? []) {
       const key = player.toLowerCase();
       const row = stats.get(key) ?? {
@@ -811,15 +812,17 @@ async function refresh() {
       }
     }
 
-    const [round, recent, meta] = await Promise.all([
+    const [round, recent, allTime, meta] = await Promise.all([
       integration.getCurrentRound(),
       integration.getRecentResults(RECENT_LIMIT).catch(() => []),
+      integration.getAllTimeResults().catch(() => []),
       state.meta ? Promise.resolve(state.meta) : integration.getGameMeta().catch(() => null),
     ]);
 
     if (meta) state.meta = meta;
     applyRoundSnapshot(round);
     state.results = recent;
+    state.leaderboardResults = allTime;
     renderContractInfo(integration.CONFIG);
     await syncResultState(integration);
     renderMeta();
