@@ -755,6 +755,18 @@ async function syncPendingResultOnly(integration) {
   return true;
 }
 
+async function refreshLeaderboardOnly(integration) {
+  try {
+    const allTime = await integration.getAllTimeResults().catch(() => null);
+    if (!allTime) return;
+    state.leaderboardResults = allTime;
+    renderLeaderboard();
+    renderFeed();
+  } catch {
+    // keep the last visible leaderboard state
+  }
+}
+
 function applyRoundSnapshot(round) {
   state.currentRound = round;
   renderStatus();
@@ -812,17 +824,18 @@ async function refresh() {
       }
     }
 
-    const [round, recent, allTime, meta] = await Promise.all([
+    const [round, recent, meta] = await Promise.all([
       integration.getCurrentRound(),
       integration.getRecentResults(RECENT_LIMIT).catch(() => []),
-      integration.getAllTimeResults().catch(() => []),
       state.meta ? Promise.resolve(state.meta) : integration.getGameMeta().catch(() => null),
     ]);
 
     if (meta) state.meta = meta;
     applyRoundSnapshot(round);
     state.results = recent;
-    state.leaderboardResults = allTime;
+    if (!state.leaderboardResults.length && recent.length) {
+      state.leaderboardResults = recent;
+    }
     renderContractInfo(integration.CONFIG);
     await syncResultState(integration);
     renderMeta();
@@ -830,6 +843,7 @@ async function refresh() {
     renderLeaderboard();
     renderFeed();
     renderVerifyLinks();
+    void refreshLeaderboardOnly(integration);
     if (!state.account) setStatusMessage("");
   } catch (error) {
     setStatusMessage(formatUiError(error, "Live data is temporarily unavailable. Retrying automatically."));
