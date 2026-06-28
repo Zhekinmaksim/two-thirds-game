@@ -155,6 +155,12 @@
   .tt-btn.sec{margin-top:8px}
   .tt-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
   .tt-actions .tt-btn{margin-top:0}
+  .tt-credit{margin-top:14px;padding:12px;border:1px solid color-mix(in oklab,var(--cyan),#050302 58%);background:rgba(54,245,255,.05);border-radius:4px}
+  .tt-credit-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .tt-credit-head .l{font-size:10px;color:var(--cyan);letter-spacing:1px}
+  .tt-credit-head .v{font-size:11px;color:var(--green);text-shadow:0 0 8px rgba(69,230,69,.45)}
+  .tt-credit-copy{margin:8px 0 0;font-size:16px;line-height:1.15;color:var(--accent-dim)}
+  .tt-credit .tt-btn{margin-top:12px}
   .tt-wait{text-align:center;padding:14px 0}
   .tt-wait .c{font-family:'Press Start 2P',monospace;font-size:32px;color:var(--cyan);text-shadow:0 0 8px rgba(54,245,255,.6)}
   .tt-wait .l{font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.6;color:var(--cyan);margin-top:14px}
@@ -372,6 +378,15 @@
       </div>
 
       <div id="after" hidden></div>
+
+      <div class="tt-credit" id="payoutPanel" hidden>
+        <div class="tt-credit-head">
+          <span class="l tt-px">SAFE WITHDRAW</span>
+          <span class="v tt-px" id="payoutAmount">$0.00 USDC</span>
+        </div>
+        <p class="tt-credit-copy" id="payoutHint">Queued winnings are held safely by the contract until you withdraw them.</p>
+        <button class="tt-btn cyan" id="btnWithdrawPayout" type="button">▸ WITHDRAW QUEUED PAYOUT</button>
+      </div>
     </div>
   </div>
 

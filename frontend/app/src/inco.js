@@ -86,6 +86,8 @@ const GAME_ABI = parseAbi([
   "function entryFee() view returns (uint256)",
   "function rakeBps() view returns (uint16)",
   "function roundDuration() view returns (uint64)",
+  "function pendingPayouts(address) view returns (uint256)",
+  "function withdrawPayout(address to)",
   "function getRound(uint256 rid) view returns (uint64 closesAt, bool settled, uint256 pot, uint256 playerCount)",
   "function getPlayers(uint256 rid) view returns (address[])",
   "function settle(uint256[] values, bytes[][] signatures)",
@@ -622,6 +624,37 @@ export async function playRound(wallet, account, pick) {
     return tx;
   } catch (error) {
     throw new Error(`Entry transaction failed. ${getErrorMessage(error, "The encrypted entry transaction did not complete.")}`, { cause: error });
+  }
+}
+
+export async function getPendingPayout(account) {
+  requireGameAddress();
+  if (!account) return 0n;
+
+  return publicClient.readContract({
+    address: CONFIG.game,
+    abi: GAME_ABI,
+    functionName: "pendingPayouts",
+    args: [getAddress(account)],
+  });
+}
+
+export async function withdrawPendingPayout(wallet, account, to = account) {
+  requireGameAddress();
+  const target = getAddress(to ?? account);
+
+  const game = getContract({
+    address: CONFIG.game,
+    abi: GAME_ABI,
+    client: { public: publicClient, wallet },
+  });
+
+  try {
+    const tx = await game.write.withdrawPayout([target], { account });
+    await publicClient.waitForTransactionReceipt({ hash: tx });
+    return tx;
+  } catch (error) {
+    throw new Error(`Safe withdraw failed. ${getErrorMessage(error, "The queued payout could not be withdrawn.")}`, { cause: error });
   }
 }
 

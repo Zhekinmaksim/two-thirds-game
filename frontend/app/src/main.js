@@ -28,6 +28,8 @@ const state = {
   lastRefreshAt: 0,
   connecting: false,
   submitting: false,
+  withdrawingPayout: false,
+  pendingPayoutAmount: 0n,
   statusMessage: "",
 };
 
@@ -152,6 +154,10 @@ function getPersonalPick() {
   if (state.activeResult?.yourPick !== undefined) return state.activeResult.yourPick;
   if (state.pending?.pick !== undefined) return state.pending.pick;
   return state.selectedNumber;
+}
+
+function getPendingPayoutAmount() {
+  return BigInt(state.pendingPayoutAmount ?? 0n);
 }
 
 function renderContractInfo(config) {
@@ -384,6 +390,28 @@ function renderWalletHelp() {
   $("walletHelp").textContent = "Public round data is visible without a wallet. Connect a wallet or Base Account only when you want to sign a real encrypted entry.";
 }
 
+function renderPendingPayout() {
+  const panel = $("payoutPanel");
+  const amount = getPendingPayoutAmount();
+
+  if (!state.account || amount <= 0n) {
+    panel.hidden = true;
+    return;
+  }
+
+  $("payoutAmount").textContent = `${usd(amount)} USDC`;
+  $("payoutHint").textContent = state.withdrawingPayout
+    ? "Submitting your queued payout withdrawal on Base..."
+    : "Automatic payout fallback. If the contract could not complete a winner transfer during settlement, the owed USDC stays here for you to withdraw safely.";
+
+  const button = $("btnWithdrawPayout");
+  button.disabled = state.withdrawingPayout || state.connecting || state.submitting;
+  button.textContent = state.withdrawingPayout
+    ? "▸ WITHDRAWING..."
+    : "▸ WITHDRAW QUEUED PAYOUT";
+  panel.hidden = false;
+}
+
 function renderControl() {
   const pendingRound = isPendingRoundLive();
   const reveal = Boolean(state.activeResult);
@@ -430,6 +458,7 @@ function renderControl() {
 
   if (reveal) renderResultPanel();
   renderWalletHelp();
+  renderPendingPayout();
 }
 
 function renderResultPanel() {
@@ -824,13 +853,17 @@ async function refresh() {
       }
     }
 
-    const [round, recent, meta] = await Promise.all([
+    const connectedAccount = state.account;
+
+    const [round, recent, meta, pendingPayout] = await Promise.all([
       integration.getCurrentRound(),
       integration.getRecentResults(RECENT_LIMIT).catch(() => []),
       state.meta ? Promise.resolve(state.meta) : integration.getGameMeta().catch(() => null),
+      connectedAccount ? integration.getPendingPayout(connectedAccount).catch(() => 0n) : Promise.resolve(0n),
     ]);
 
     if (meta) state.meta = meta;
+    state.pendingPayoutAmount = BigInt(pendingPayout ?? 0n);
     applyRoundSnapshot(round);
     state.results = recent;
     if (!state.leaderboardResults.length && recent.length) {
@@ -920,6 +953,37 @@ async function handleConnectAndEnter() {
   }
 }
 
+async function handleWithdrawPayout() {
+  if (state.withdrawingPayout || getPendingPayoutAmount() <= 0n) return;
+
+  try {
+    const integration = await loadIntegration();
+    if (!state.wallet || !state.account) {
+      const resumed = await integration.resumeWalletConnection({ ensureCorrectChain: true }).catch(() => null);
+      if (!resumed) {
+        throw new Error("Reconnect your wallet before withdrawing queued winnings.");
+      }
+      state.wallet = resumed.wallet;
+      state.account = resumed.account;
+      persistKnownAccount(resumed.account);
+    }
+
+    state.withdrawingPayout = true;
+    setStatusMessage("Submitting safe withdraw...");
+    renderControl();
+
+    await integration.withdrawPendingPayout(state.wallet, state.account, state.account);
+    state.pendingPayoutAmount = 0n;
+    setStatusMessage("Queued payout withdrawn successfully.");
+    await refresh();
+  } catch (error) {
+    setStatusMessage(`Safe withdraw failed: ${error?.shortMessage || error?.message || "wallet request failed"}`);
+  } finally {
+    state.withdrawingPayout = false;
+    renderControl();
+  }
+}
+
 function bindEvents() {
   $("verifyBtn").addEventListener("click", () => {
     const panel = $("verifyPanel");
@@ -939,6 +1003,7 @@ function bindEvents() {
   });
 
   $("btnSign").addEventListener("click", handleConnectAndEnter);
+  $("btnWithdrawPayout").addEventListener("click", handleWithdrawPayout);
 
   const audio = $("bgm");
   const audioBtn = $("audioBtn");
