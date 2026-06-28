@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-06-28T19:22:45.035Z",
+  "chainId": 8453,
+  "contract": "0x4163b226f978E071FD45bc913bf9EbC8ed2d5860",
+  "deploymentBlock": "47506833",
+  "lastScannedBlock": "47942590",
+  "entryFee": "1000000",
+  "rows": [
+    {
+      "address": "0xd7F0EFC1736AC7E32Db2F9F48692308C62c9B020",
+      "games": 7,
+      "wins": 7,
+      "net": "8200000"
+    },
+    {
+      "address": "0x4C6cea84939793E1fAd989cAc29edf680093b0EF",
+      "games": 1,
+      "wins": 0,
+      "net": "-1000000"
+    },
+    {
+      "address": "0x771388495F34d21C5574FeFc04cd1D5811E00aDa",
+      "games": 1,
+      "wins": 0,
+      "net": "-1000000"
+    },
+    {
+      "address": "0x934eAf1F360Ff038D4F9b401Eb71985a7Dc305F3",
+      "games": 2,
+      "wins": 0,
+      "net": "-2000000"
+    },
+    {
+      "address": "0xAD32bA85d2C628CFD559f2Db2DF59039C2bEb939",
+      "games": 2,
+      "wins": 0,
+      "net": "-2000000"
+    },
+    {
+      "address": "0x4eD3265fA5217071F678eCD58eAf7f720dBf3FEc",
+      "games": 3,
+      "wins": 0,
+      "net": "-3000000"
+    }
+  ]
+}

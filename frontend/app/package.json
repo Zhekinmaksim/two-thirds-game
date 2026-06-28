@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "update:leaderboard": "node scripts/update-leaderboard-snapshot.mjs"
   },
   "dependencies": {
     "@base-org/account": "^2.5.6",

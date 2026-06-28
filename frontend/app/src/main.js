@@ -4,7 +4,8 @@ const RECENT_LIMIT = 12;
 const ROUND_REFRESH_MS = 5_000;
 const REFRESH_MS = 15_000;
 const LEADERBOARD_REFRESH_MS = 5 * 60_000;
-const ENABLE_REMOTE_LEADERBOARD = false;
+const ENABLE_REMOTE_LEADERBOARD = true;
+const LEADERBOARD_URL = "/data/leaderboard.json";
 const STORAGE_PENDING = "twothirds:pending";
 const STORAGE_LAST_RESULT = "twothirds:last-result";
 const STORAGE_ACCOUNT = "twothirds:account";
@@ -793,7 +794,7 @@ async function refreshLeaderboardOnly() {
   if (Date.now() - state.lastLeaderboardFetchAt < LEADERBOARD_REFRESH_MS) return;
 
   try {
-    const response = await fetch("/api/leaderboard.ts", {
+    const response = await fetch(LEADERBOARD_URL, {
       headers: { accept: "application/json" },
     });
     state.lastLeaderboardFetchAt = Date.now();
