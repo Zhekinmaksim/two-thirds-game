@@ -18,7 +18,6 @@ const DEFAULTS = {
   pepper: "mainnet",
   chainId: 8453,
   chainName: "Base",
-  rpcUrl: "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
   game: "0x4163b226f978E071FD45bc913bf9EbC8ed2d5860",
   token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 };
@@ -55,20 +54,18 @@ export const CONFIG = {
   pepper: readEnv("VITE_INCO_PEPPER", DEFAULTS.pepper),
   chainId: Number(readEnv("VITE_CHAIN_ID", String(DEFAULTS.chainId))),
   chainName: readEnv("VITE_CHAIN_NAME", DEFAULTS.chainName),
-  rpcUrl: readEnv("VITE_RPC_URL", DEFAULTS.rpcUrl),
   game: normalizeAddress(readEnv("VITE_GAME_ADDRESS", DEFAULTS.game), DEFAULTS.game),
   token: normalizeAddress(readEnv("VITE_TOKEN_ADDRESS", DEFAULTS.token), DEFAULTS.token),
 };
 
 const RPC_FALLBACKS = {
   8453: [
-    "https://base-rpc.publicnode.com",
     "https://mainnet.base.org",
-    DEFAULTS.rpcUrl,
+    "https://base-rpc.publicnode.com",
   ],
 };
 
-const rpcUrls = [...new Set([...(RPC_FALLBACKS[CONFIG.chainId] ?? []), CONFIG.rpcUrl].filter(Boolean))];
+const rpcUrls = [...new Set(RPC_FALLBACKS[CONFIG.chainId] ?? [])];
 const LOG_BLOCK_SPAN = 5_000n;
 const MAX_LOG_LOOKBACK_BLOCKS = 100_000n;
 const resultCache = new Map();

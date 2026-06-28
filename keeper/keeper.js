@@ -34,7 +34,8 @@ if (!RPC_URL || !SETTLER_PRIVATE_KEY || !GAME_ADDRESS || !CHAIN_ID) {
 
 const RPC_FALLBACKS = {
   8453: [
-    "https://rpc.ankr.com/base/1dfb41f645be2ab63ae3eb7463c41f98995438f00e44a579a0abee13b61cf83a",
+    "https://mainnet.base.org",
+    "https://base-rpc.publicnode.com",
   ],
 };
 

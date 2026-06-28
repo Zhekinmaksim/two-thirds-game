@@ -11,6 +11,8 @@ function readHeader(headers: Record<string, string | string[] | undefined>, key:
   return Array.isArray(value) ? value[0] : value;
 }
 
+const SITE_ORIGIN = "https://twothirds.fun";
+
 export default function handler(
   request: { url?: string; headers: Record<string, string | string[] | undefined> },
   response: {
@@ -19,10 +21,8 @@ export default function handler(
     end: (body: string) => void;
   },
 ) {
-  const proto = readHeader(request.headers, "x-forwarded-proto") ?? "https";
-  const host = readHeader(request.headers, "host") ?? "twothirds.fun";
-  const url = new URL(request.url ?? "/", `${proto}://${host}`);
-  const origin = url.origin;
+  const forwardedPath = request.url ?? "/";
+  const url = new URL(forwardedPath, SITE_ORIGIN);
   const rid = url.searchParams.get("rid") ?? "0";
   const card = url.searchParams.get("card") ?? "0";
   const target = url.searchParams.get("target") ?? "0";
@@ -39,8 +39,8 @@ export default function handler(
   const description = won
     ? `Round #${rid}. Card #${card} landed closest to target ${target}. ${winners} winner${winners === "1" ? "" : "s"} split the pot.`
     : `Round #${rid}. Card #${card}, target ${target}, off by ${off}. Next one is mine.`;
-  const imageUrl = `${origin}/api/share-image.ts${url.search}`;
-  const destination = "https://twothirds.fun";
+  const imageUrl = `${SITE_ORIGIN}/api/share-image.ts${url.search}`;
+  const destination = SITE_ORIGIN;
   const imageAlt = won
     ? `TWO THIRDS result card, round ${rid}, card ${card} won ${pay}`
     : `TWO THIRDS result card, round ${rid}, card ${card}, target ${target}`;
