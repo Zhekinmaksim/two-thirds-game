@@ -6,7 +6,6 @@ import {
   http,
   parseAbi,
 } from "viem";
-import { limitRpcRoute } from "./_rpc-guard";
 
 const CHAIN_ID = 8453;
 const CHAIN_NAME = "Base";
@@ -19,6 +18,7 @@ const RPC_URLS = [
   "https://mainnet.base.org",
   "https://base-rpc.publicnode.com",
 ];
+const RATE_WINDOW_MS = 10 * 60 * 1000;
 
 const GAME_ABI = parseAbi([
   "function entryFee() view returns (uint256)",
@@ -34,7 +34,7 @@ const chain = defineChain({
   rpcUrls: { default: { http: RPC_URLS } },
 });
 
-const publicClient = createPublicClient({
+const publicClient: any = createPublicClient({
   chain,
   transport: fallback(RPC_URLS.map((url) => http(url, { retryCount: 1, timeout: 8_000 }))),
 });
@@ -42,6 +42,7 @@ const publicClient = createPublicClient({
 let cachedAt = 0;
 let cachedPayload: { rows: Array<{ address: string; games: number; wins: number; net: string }> } | null = null;
 let inflightPayloadPromise: Promise<{ rows: Array<{ address: string; games: number; wins: number; net: string }> }> | null = null;
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
 function json(response: {
   setHeader: (name: string, value: string) => void;
@@ -52,6 +53,33 @@ function json(response: {
   response.setHeader("content-type", "application/json; charset=utf-8");
   response.setHeader("cache-control", "public, max-age=0, s-maxage=60, stale-while-revalidate=300");
   response.end(JSON.stringify(body));
+}
+
+function readHeader(headers: Record<string, string | string[] | undefined>, key: string) {
+  const value = headers[key];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function limitRpcRoute(headers: Record<string, string | string[] | undefined>, limit: number) {
+  const now = Date.now();
+  const forwardedFor = readHeader(headers, "x-forwarded-for");
+  const clientIp = forwardedFor?.split(",")[0]?.trim()
+    || readHeader(headers, "x-real-ip")?.trim()
+    || "unknown";
+  const bucket = rateBuckets.get(clientIp);
+
+  if (!bucket || bucket.resetAt <= now) {
+    const resetAt = now + RATE_WINDOW_MS;
+    rateBuckets.set(clientIp, { count: 1, resetAt });
+    return { allowed: true, remaining: Math.max(0, limit - 1), resetAt };
+  }
+
+  if (bucket.count >= limit) {
+    return { allowed: false, remaining: 0, resetAt: bucket.resetAt };
+  }
+
+  bucket.count += 1;
+  return { allowed: true, remaining: Math.max(0, limit - bucket.count), resetAt: bucket.resetAt };
 }
 
 function sortLogsNewestFirst<T extends { blockNumber?: bigint | null; logIndex?: number | null }>(logs: T[]) {
