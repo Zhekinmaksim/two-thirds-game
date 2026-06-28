@@ -16,7 +16,6 @@ const CACHE_TTL_MS = 5 * 60_000;
 const ROUTE_LIMIT = 24;
 const RPC_URLS = [
   "https://mainnet.base.org",
-  "https://base-rpc.publicnode.com",
 ];
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 
@@ -51,7 +50,7 @@ function json(response: {
 }, statusCode: number, body: unknown) {
   response.statusCode = statusCode;
   response.setHeader("content-type", "application/json; charset=utf-8");
-  response.setHeader("cache-control", "public, max-age=0, s-maxage=60, stale-while-revalidate=300");
+  response.setHeader("cache-control", "public, max-age=0, s-maxage=300, stale-while-revalidate=900");
   response.end(JSON.stringify(body));
 }
 
