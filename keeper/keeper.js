@@ -1,6 +1,7 @@
 // keeper.js - auto-settles TwoThirds rounds so the game runs "like clockwork".
 //
-// Every TICK seconds it checks the current round. Once the round has closed it
+// It polls the current round on a cadence that speeds up near close, so idle
+// rounds do not burn through private RPC quota. Once the round has closed it
 // asks Inco for an attested decryption of every guess and submits settle(). Even
 // an empty round is settled into the next round, while a single-player round is
 // auto-refunded without any decrypt step, so there is always a live round.
@@ -39,19 +40,25 @@ const RPC_FALLBACKS = {
   ],
 };
 
-const rpcUrls = [...new Set([RPC_URL, ...(RPC_FALLBACKS[Number(CHAIN_ID)] ?? [])])];
+const publicRpcUrls = [...new Set(RPC_FALLBACKS[Number(CHAIN_ID)] ?? [])];
+const writeRpcUrls = [...new Set([RPC_URL, ...publicRpcUrls])];
+const readRpcUrls = publicRpcUrls.length ? publicRpcUrls : writeRpcUrls;
+const baseTickMs = Math.max(1, Number(TICK_SECONDS)) * 1000;
+const MID_TICK_MS = Math.max(baseTickMs, 5_000);
+const FAR_TICK_MS = Math.max(baseTickMs, 15_000);
 
 const chain = defineChain({
   id: Number(CHAIN_ID),
   name: "host",
   nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: rpcUrls } },
+  rpcUrls: { default: { http: readRpcUrls } },
 });
 
 const account = privateKeyToAccount(SETTLER_PRIVATE_KEY);
-const transport = fallback(rpcUrls.map((url) => http(url, { retryCount: 1, timeout: 8_000 })));
-const publicClient = createPublicClient({ chain, transport });
-const wallet = createWalletClient({ account, chain, transport });
+const readTransport = fallback(readRpcUrls.map((url) => http(url, { retryCount: 1, timeout: 8_000 })));
+const writeTransport = fallback(writeRpcUrls.map((url) => http(url, { retryCount: 1, timeout: 8_000 })));
+const publicClient = createPublicClient({ chain, transport: readTransport });
+const wallet = createWalletClient({ account, chain, transport: writeTransport });
 
 const ABI = parseAbi([
   "function roundId() view returns (uint256)",
@@ -65,6 +72,7 @@ const state = {
   lastRoundId: null,
   lastPlayerCount: null,
   lastTickAt: null,
+  nextTickInMs: baseTickMs,
   status: "booting",
   lastError: null,
 };
@@ -73,7 +81,7 @@ let inco;
 async function getInco() {
   if (inco) return inco;
   inco = await Lightning.latest(INCO_PEPPER, Number(CHAIN_ID), {
-    hostChainRpcUrls: rpcUrls,
+    hostChainRpcUrls: readRpcUrls,
   });
   return inco;
 }
@@ -83,6 +91,17 @@ function plaintextToBig(p) {
   if (typeof p === "number") return BigInt(p);
   if (p && p.value !== undefined) return BigInt(p.value);
   return BigInt(p);
+}
+
+function getNextTickDelayMs({ closesAt = null, settled = false, now = Math.floor(Date.now() / 1000) } = {}) {
+  if (settled) return MID_TICK_MS;
+  if (closesAt === null) return MID_TICK_MS;
+
+  const left = Number(closesAt) - now;
+  if (left <= 0) return baseTickMs;
+  if (left <= 60) return baseTickMs;
+  if (left <= 300) return MID_TICK_MS;
+  return FAR_TICK_MS;
 }
 
 async function tick() {
@@ -98,11 +117,13 @@ async function tick() {
       const left = Number(closesAt) - now;
       state.status = settled ? "settled" : "waiting";
       state.lastError = null;
+      state.nextTickInMs = getNextTickDelayMs({ closesAt, settled, now });
       console.log(`round #${rid} | players ${playerCount} | ${settled ? "settled" : left + "s left"}`);
       return;
     }
 
     state.status = "settling";
+    state.nextTickInMs = baseTickMs;
     state.lastError = null;
     console.log(`round #${rid} closed with ${playerCount} players -> settling...`);
 
@@ -121,18 +142,26 @@ async function tick() {
     const tx = await game.write.settle([values, signatures], { account });
     await publicClient.waitForTransactionReceipt({ hash: tx });
     state.status = "settled";
+    state.nextTickInMs = getNextTickDelayMs({ closesAt: null, settled: true });
     console.log(`  settled round #${rid} in ${tx}`);
   } catch (e) {
     const msg = (e?.shortMessage || e?.message || String(e));
     state.lastError = msg;
     if (msg.includes("settled") || msg.includes("round open")) {
       state.status = "skipped";
+      state.nextTickInMs = MID_TICK_MS;
       console.log("  skip:", msg);           // race with another settler, or not closed yet
     } else {
       state.status = "error";
+      state.nextTickInMs = MID_TICK_MS;
       console.error("  keeper error:", msg);  // keep running; retry next tick
     }
   }
+}
+
+async function tickLoop() {
+  await tick();
+  setTimeout(tickLoop, state.nextTickInMs);
 }
 
 nodeHttp.createServer((req, res) => {
@@ -149,12 +178,12 @@ nodeHttp.createServer((req, res) => {
     settler: account.address,
     game: GAME_ADDRESS,
     tickSeconds: Number(TICK_SECONDS),
+    nextTickInMs: state.nextTickInMs,
     ...state,
   }));
 }).listen(Number(PORT), "0.0.0.0", () => {
   console.log(`health endpoint on :${PORT}/healthz`);
 });
 
-console.log(`keeper up. settler=${account.address} game=${GAME_ADDRESS} every ${TICK_SECONDS}s`);
-tick();
-setInterval(tick, Number(TICK_SECONDS) * 1000);
+console.log(`keeper up. settler=${account.address} game=${GAME_ADDRESS} baseTick=${TICK_SECONDS}s`);
+tickLoop();

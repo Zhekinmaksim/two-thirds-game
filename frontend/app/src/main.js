@@ -3,6 +3,7 @@ const MAX_PLAYERS = 100;
 const RECENT_LIMIT = 12;
 const ROUND_REFRESH_MS = 5_000;
 const REFRESH_MS = 15_000;
+const LEADERBOARD_REFRESH_MS = 5 * 60_000;
 const STORAGE_PENDING = "twothirds:pending";
 const STORAGE_LAST_RESULT = "twothirds:last-result";
 const STORAGE_ACCOUNT = "twothirds:account";
@@ -27,6 +28,7 @@ const state = {
   refreshInFlight: false,
   roundRefreshInFlight: false,
   lastRefreshAt: 0,
+  lastLeaderboardFetchAt: 0,
   connecting: false,
   submitting: false,
   withdrawingPayout: false,
@@ -787,10 +789,13 @@ async function syncPendingResultOnly(integration) {
 }
 
 async function refreshLeaderboardOnly() {
+  if (Date.now() - state.lastLeaderboardFetchAt < LEADERBOARD_REFRESH_MS) return;
+
   try {
     const response = await fetch("/api/leaderboard.ts", {
       headers: { accept: "application/json" },
     });
+    state.lastLeaderboardFetchAt = Date.now();
     if (!response.ok) return;
 
     const payload = await response.json();
@@ -886,7 +891,13 @@ async function refresh() {
     renderLeaderboard();
     renderFeed();
     renderVerifyLinks();
-    void refreshLeaderboardOnly();
+    if (
+      state.activeResult?.kind === "settled"
+      || !state.lastLeaderboardFetchAt
+      || Date.now() - state.lastLeaderboardFetchAt >= LEADERBOARD_REFRESH_MS
+    ) {
+      void refreshLeaderboardOnly();
+    }
     if (!state.account) setStatusMessage("");
   } catch (error) {
     setStatusMessage(formatUiError(error, "Live data is temporarily unavailable. Retrying automatically."));
