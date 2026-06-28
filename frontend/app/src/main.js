@@ -19,6 +19,7 @@ const state = {
   meta: null,
   results: [],
   leaderboardResults: [],
+  leaderboardRows: [],
   activeResult: null,
   pending: loadStoredJson(STORAGE_PENDING),
   lastResultRef: loadStoredJson(STORAGE_LAST_RESULT),
@@ -309,6 +310,43 @@ function clearSelection() {
 function totalNetPot(result, summary) {
   if (result.netPot !== undefined && result.netPot !== null) return result.netPot;
   return BigInt(summary.winnersPlayers) * BigInt(result.payPerWinner ?? 0n);
+}
+
+function buildLeaderboardRows(results, entryFee) {
+  const stats = new Map();
+
+  for (const result of results) {
+    for (const player of result.players ?? []) {
+      const key = player.toLowerCase();
+      const row = stats.get(key) ?? {
+        address: player,
+        games: 0,
+        wins: 0,
+        net: 0n,
+      };
+      row.games += 1;
+      row.net -= BigInt(entryFee);
+      stats.set(key, row);
+    }
+
+    for (const winner of result.winnerAddresses ?? []) {
+      const key = winner.toLowerCase();
+      const row = stats.get(key) ?? {
+        address: winner,
+        games: 0,
+        wins: 0,
+        net: 0n,
+      };
+      row.wins += 1;
+      row.net += BigInt(result.payPerWinner);
+      stats.set(key, row);
+    }
+  }
+
+  return [...stats.values()].sort((left, right) => {
+    if (left.net === right.net) return right.wins - left.wins;
+    return left.net > right.net ? -1 : 1;
+  });
 }
 
 function renderBoard() {
@@ -638,44 +676,8 @@ function renderRefundedPanel(result) {
 }
 
 function renderLeaderboard() {
-  const entryFee = state.meta?.entryFee ?? 1_000_000n;
   const viewerAccount = (state.account ?? state.lastKnownAccount ?? "").toLowerCase();
-  const stats = new Map();
-
-  for (const result of state.leaderboardResults) {
-    for (const player of result.players ?? []) {
-      const key = player.toLowerCase();
-      const row = stats.get(key) ?? {
-        address: player,
-        games: 0,
-        wins: 0,
-        net: 0n,
-      };
-      row.games += 1;
-      row.net -= BigInt(entryFee);
-      stats.set(key, row);
-    }
-
-    for (const winner of result.winnerAddresses ?? []) {
-      const key = winner.toLowerCase();
-      const row = stats.get(key) ?? {
-        address: winner,
-        games: 0,
-        wins: 0,
-        net: 0n,
-      };
-      row.wins += 1;
-      row.net += BigInt(result.payPerWinner);
-      stats.set(key, row);
-    }
-  }
-
-  const rows = [...stats.values()]
-    .sort((left, right) => {
-      if (left.net === right.net) return right.wins - left.wins;
-      return left.net > right.net ? -1 : 1;
-    })
-    .slice(0, 8);
+  const rows = state.leaderboardRows.slice(0, 8);
 
   if (!rows.length) {
     $("lb").innerHTML = '<tr><td colspan="5" class="tt-empty">leaderboard will appear after real settlements</td></tr>';
@@ -784,13 +786,21 @@ async function syncPendingResultOnly(integration) {
   return true;
 }
 
-async function refreshLeaderboardOnly(integration) {
+async function refreshLeaderboardOnly() {
   try {
-    const allTime = await integration.getAllTimeResults().catch(() => null);
-    if (!allTime) return;
-    state.leaderboardResults = allTime;
+    const response = await fetch("/api/leaderboard.ts", {
+      headers: { accept: "application/json" },
+    });
+    if (!response.ok) return;
+
+    const payload = await response.json();
+    if (!Array.isArray(payload?.rows)) return;
+
+    state.leaderboardRows = payload.rows.map((row) => ({
+      ...row,
+      net: BigInt(row.net),
+    }));
     renderLeaderboard();
-    renderFeed();
   } catch {
     // keep the last visible leaderboard state
   }
@@ -866,8 +876,8 @@ async function refresh() {
     state.pendingPayoutAmount = BigInt(pendingPayout ?? 0n);
     applyRoundSnapshot(round);
     state.results = recent;
-    if (!state.leaderboardResults.length && recent.length) {
-      state.leaderboardResults = recent;
+    if (!state.leaderboardRows.length && recent.length) {
+      state.leaderboardRows = buildLeaderboardRows(recent, state.meta?.entryFee ?? 1_000_000n);
     }
     renderContractInfo(integration.CONFIG);
     await syncResultState(integration);
@@ -876,7 +886,7 @@ async function refresh() {
     renderLeaderboard();
     renderFeed();
     renderVerifyLinks();
-    void refreshLeaderboardOnly(integration);
+    void refreshLeaderboardOnly();
     if (!state.account) setStatusMessage("");
   } catch (error) {
     setStatusMessage(formatUiError(error, "Live data is temporarily unavailable. Retrying automatically."));

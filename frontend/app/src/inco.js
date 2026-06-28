@@ -65,9 +65,14 @@ const RPC_FALLBACKS = {
   ],
 };
 
+const DEPLOYMENT_BLOCKS = {
+  8453: 47_506_833n,
+};
+
 const rpcUrls = [...new Set(RPC_FALLBACKS[CONFIG.chainId] ?? [])];
 const LOG_BLOCK_SPAN = 5_000n;
 const MAX_LOG_LOOKBACK_BLOCKS = 100_000n;
+const deploymentBlock = DEPLOYMENT_BLOCKS[CONFIG.chainId] ?? 0n;
 const resultCache = new Map();
 let latestSettledBlock = null;
 let allSettledLogsCache = [];
@@ -151,9 +156,10 @@ async function collectLogs(eventName, { limit = 10, rid } = {}) {
   const recentMinBlock = latestSettledBlock === null
     ? hardMinBlock
     : (latestSettledBlock > LOG_BLOCK_SPAN ? latestSettledBlock - LOG_BLOCK_SPAN : 0n);
-  const minBlock = ridArg === undefined
+  const unclampedMinBlock = ridArg === undefined
     ? (recentMinBlock > hardMinBlock ? recentMinBlock : hardMinBlock)
     : hardMinBlock;
+  const minBlock = unclampedMinBlock > deploymentBlock ? unclampedMinBlock : deploymentBlock;
 
   let toBlock = latestBlock;
   while (toBlock >= minBlock) {
@@ -200,7 +206,7 @@ async function collectAllSettledLogs() {
   requireGameAddress();
 
   const latestBlock = await publicClient.getBlockNumber();
-  const fromStart = allSettledScannedToBlock === null ? 0n : allSettledScannedToBlock + 1n;
+  const fromStart = allSettledScannedToBlock === null ? deploymentBlock : allSettledScannedToBlock + 1n;
 
   if (fromStart > latestBlock) return allSettledLogsCache;
 
