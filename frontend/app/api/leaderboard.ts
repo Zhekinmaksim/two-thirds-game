@@ -14,6 +14,7 @@ const DEPLOYMENT_BLOCK = 47_506_833n;
 const LOG_BLOCK_SPAN = 5_000n;
 const CACHE_TTL_MS = 5 * 60_000;
 const ROUTE_LIMIT = 24;
+const ENABLE_CHAIN_SCAN = false;
 const RPC_URLS = [
   "https://mainnet.base.org",
 ];
@@ -237,6 +238,10 @@ export default async function handler(
     if (!rate.allowed) {
       if (cachedPayload) return json(response, 200, cachedPayload);
       return json(response, 429, { error: "rate limited" });
+    }
+
+    if (!ENABLE_CHAIN_SCAN) {
+      return json(response, 200, cachedPayload ?? { rows: [] });
     }
 
     const payload = await getOrBuildPayload();

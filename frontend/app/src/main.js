@@ -4,6 +4,7 @@ const RECENT_LIMIT = 12;
 const ROUND_REFRESH_MS = 5_000;
 const REFRESH_MS = 15_000;
 const LEADERBOARD_REFRESH_MS = 5 * 60_000;
+const ENABLE_REMOTE_LEADERBOARD = false;
 const STORAGE_PENDING = "twothirds:pending";
 const STORAGE_LAST_RESULT = "twothirds:last-result";
 const STORAGE_ACCOUNT = "twothirds:account";
@@ -892,9 +893,12 @@ async function refresh() {
     renderFeed();
     renderVerifyLinks();
     if (
+      ENABLE_REMOTE_LEADERBOARD
+      && (
       state.activeResult?.kind === "settled"
       || !state.lastLeaderboardFetchAt
       || Date.now() - state.lastLeaderboardFetchAt >= LEADERBOARD_REFRESH_MS
+      )
     ) {
       void refreshLeaderboardOnly();
     }
