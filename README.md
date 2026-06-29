@@ -109,6 +109,8 @@ npm install
 npm run dev
 ```
 
+The browser runtime uses public Base RPC endpoints for reads. The all-time leaderboard is served from a static snapshot at `public/data/leaderboard.json`, refreshed by GitHub Actions. If you want snapshot generation to use a paid provider, set `BASE_RPC_URL` in GitHub Actions secrets for the `Update Leaderboard Snapshot` workflow.
+
 Required frontend env:
 
 ```bash
