@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-08T18:02:01.111Z",
+  "generatedAt": "2026-08-08T19:03:31.555Z",
   "chainId": 8453,
   "contract": "0x4163b226f978E071FD45bc913bf9EbC8ed2d5860",
   "deploymentBlock": "47506833",
-  "lastScannedBlock": "49711386",
+  "lastScannedBlock": "49713232",
   "entryFee": "1000000",
   "rows": [
     {
