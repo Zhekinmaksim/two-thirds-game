@@ -21,9 +21,9 @@ const DEPLOYMENT_BLOCK = 47_506_833n;
 const LOG_BLOCK_SPAN = 9_500n;
 const PLAYER_BATCH_SIZE = 20;
 const RPC_URLS = [
+  "https://mainnet.base.org",
   process.env.LEADERBOARD_RPC_URL,
   process.env.VITE_RPC_URL,
-  "https://mainnet.base.org",
 ].filter(Boolean);
 
 const GAME_ABI = parseAbi([

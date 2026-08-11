@@ -29,7 +29,7 @@ const {
   CHAIN_ID, INCO_PEPPER = "mainnet", TICK_SECONDS = "1", PORT = "8080",
 } = process.env;
 
-if (!RPC_URL || !SETTLER_PRIVATE_KEY || !GAME_ADDRESS || !CHAIN_ID) {
+if (!SETTLER_PRIVATE_KEY || !GAME_ADDRESS || !CHAIN_ID) {
   console.error("Missing env. See .env.example"); process.exit(1);
 }
 
@@ -40,8 +40,9 @@ const RPC_FALLBACKS = {
   ],
 };
 
+const configuredRpcUrl = typeof RPC_URL === "string" && RPC_URL.trim() ? RPC_URL.trim() : null;
 const publicRpcUrls = [...new Set(RPC_FALLBACKS[Number(CHAIN_ID)] ?? [])];
-const writeRpcUrls = [...new Set([RPC_URL, ...publicRpcUrls])];
+const writeRpcUrls = [...new Set([...publicRpcUrls, configuredRpcUrl].filter(Boolean))];
 const readRpcUrls = publicRpcUrls.length ? publicRpcUrls : writeRpcUrls;
 const baseTickMs = Math.max(1, Number(TICK_SECONDS)) * 1000;
 const MID_TICK_MS = Math.max(baseTickMs, 5_000);
