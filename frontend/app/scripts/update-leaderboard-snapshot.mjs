@@ -12,6 +12,12 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_PATH = resolve(__dirname, "../public/data/leaderboard.json");
+const OUTPUT_PATH = process.env.LEADERBOARD_OUTPUT_PATH
+  ? resolve(process.cwd(), process.env.LEADERBOARD_OUTPUT_PATH)
+  : SNAPSHOT_PATH;
+const STATE_PATH = process.env.LEADERBOARD_STATE_PATH
+  ? resolve(process.cwd(), process.env.LEADERBOARD_STATE_PATH)
+  : OUTPUT_PATH;
 
 const CHAIN_ID = 8453;
 const CHAIN_NAME = "Base";
@@ -74,22 +80,47 @@ async function withRetries(label, fn, maxAttempts = 4) {
 }
 
 async function readSnapshot() {
+  for (const path of [STATE_PATH, OUTPUT_PATH]) {
+    try {
+      const raw = await readFile(path, "utf8");
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed?.rows)) throw new Error("rows missing");
+      return parsed;
+    } catch {
+      // try next source
+    }
+  }
+
+  return {
+    generatedAt: new Date(0).toISOString(),
+    chainId: CHAIN_ID,
+    contract: GAME_ADDRESS,
+    deploymentBlock: DEPLOYMENT_BLOCK.toString(),
+    lastScannedBlock: (DEPLOYMENT_BLOCK - 1n).toString(),
+    entryFee: "1000000",
+    rows: [],
+  };
+}
+
+async function readPublishedSnapshot() {
   try {
-    const raw = await readFile(SNAPSHOT_PATH, "utf8");
+    const raw = await readFile(OUTPUT_PATH, "utf8");
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed?.rows)) throw new Error("rows missing");
     return parsed;
   } catch {
-    return {
-      generatedAt: new Date(0).toISOString(),
-      chainId: CHAIN_ID,
-      contract: GAME_ADDRESS,
-      deploymentBlock: DEPLOYMENT_BLOCK.toString(),
-      lastScannedBlock: (DEPLOYMENT_BLOCK - 1n).toString(),
-      entryFee: "1000000",
-      rows: [],
-    };
+    return null;
   }
+}
+
+function comparablePayload(payload) {
+  return {
+    chainId: payload.chainId,
+    contract: payload.contract,
+    deploymentBlock: payload.deploymentBlock,
+    entryFee: payload.entryFee,
+    rows: payload.rows,
+  };
 }
 
 async function getContractEvents(eventName, fromBlock, toBlock) {
@@ -190,6 +221,7 @@ function upsertStat(stats, address) {
 
 async function main() {
   const snapshot = await readSnapshot();
+  const publishedSnapshot = await readPublishedSnapshot();
   const latestBlock = await withRetries("latest block", () => publicClient.getBlockNumber());
   const lastScannedBlock = BigInt(snapshot.lastScannedBlock ?? DEPLOYMENT_BLOCK - 1n);
   const fromBlock = lastScannedBlock + 1n > DEPLOYMENT_BLOCK ? lastScannedBlock + 1n : DEPLOYMENT_BLOCK;
@@ -278,9 +310,21 @@ async function main() {
     rows,
   };
 
-  await mkdir(dirname(SNAPSHOT_PATH), { recursive: true });
-  await writeFile(SNAPSHOT_PATH, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  console.log(`Wrote ${rows.length} leaderboard rows to ${SNAPSHOT_PATH}`);
+  await mkdir(dirname(STATE_PATH), { recursive: true });
+  await writeFile(STATE_PATH, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+
+  const publishedComparable = publishedSnapshot ? comparablePayload(publishedSnapshot) : null;
+  const nextComparable = comparablePayload(payload);
+  const rowsChanged = JSON.stringify(publishedComparable) !== JSON.stringify(nextComparable);
+
+  if (STATE_PATH === OUTPUT_PATH || rowsChanged) {
+    await mkdir(dirname(OUTPUT_PATH), { recursive: true });
+    await writeFile(OUTPUT_PATH, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    console.log(`Wrote ${rows.length} leaderboard rows to ${OUTPUT_PATH}`);
+    return;
+  }
+
+  console.log(`Leaderboard rows unchanged. Updated state only at ${STATE_PATH}`);
 }
 
 main().catch((error) => {

@@ -18,6 +18,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore leaderboard state cache
+        id: leaderboard-state-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/leaderboard-state.json
+          key: leaderboard-state-${{ github.run_id }}
+          restore-keys: |
+            leaderboard-state-
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -32,6 +41,8 @@ jobs:
         run: npm run update:leaderboard
         env:
           LEADERBOARD_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          LEADERBOARD_STATE_PATH: ${{ runner.temp }}/leaderboard-state.json
+          LEADERBOARD_OUTPUT_PATH: public/data/leaderboard.json
 
       - name: Commit snapshot changes
         run: |
@@ -44,3 +55,10 @@ jobs:
           git add public/data/leaderboard.json
           git commit -m "Update leaderboard snapshot"
           git push
+
+      - name: Save leaderboard state cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/leaderboard-state.json
+          key: leaderboard-state-${{ github.run_id }}
